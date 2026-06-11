@@ -46,34 +46,47 @@
                             <h2 class="text-lg font-black text-slate-900">{{ $folder->name }}</h2>
                             <p class="mt-2 text-sm text-slate-600">{{ $folder->description ?: 'No description provided.' }}</p>
                         </div>
-                        @if($folder->is_default)
-                            <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">Default</span>
-                        @endif
+                      @if(isset($folder->is_default) && $folder->is_default)
+    <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">Default</span>
+@endif
                     </div>
 
-                    <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
-                        <div class="rounded-2xl bg-slate-50 p-3">
-                            <dt class="text-slate-500">Documents</dt>
-                            <dd class="mt-1 text-lg font-black text-slate-900">{{ $folder->documents_count }}</dd>
-                        </div>
-                        <div class="rounded-2xl bg-slate-50 p-3">
-                            <dt class="text-slate-500">Institutions</dt>
-                            <dd class="mt-1 text-lg font-black text-slate-900">{{ count($folder->institutions) }}</dd>
-                        </div>
-                    </dl>
+                   <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
+        <div class="rounded-2xl bg-slate-50 p-3">
+              <dt class="text-slate-500">Documents</dt>
+              {{-- 🌟 FIXED: Safe fallback check if property doesn't exist on raw DB row --}}
+            <dd class="mt-1 text-lg font-black text-slate-900">
+            {{ $folder->documents_count ?? 0 }}
+              </dd>
+         </div>
 
-                    <div class="mt-4 flex flex-wrap gap-2">
-                        @forelse($folder->institutions as $institution)
-                            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{{ $institution->code }}</span>
-                        @empty
-                            <span class="text-xs font-semibold text-amber-700">Visible after institution assignment.</span>
-                        @endforelse
-                    </div>
+          <div class="rounded-2xl bg-slate-50 p-3">
+             <dt class="text-slate-500">Institutions</dt>
+           {{-- 🌟 FIXED: Safely verify type before counting to prevent integer TypeErrors --}}
+              <dd class="mt-1 text-lg font-black text-slate-900">
+            {{ is_countable($folder->institutions ?? null) ? count($folder->institutions) : ($folder->institutions ?? 0) }}
+              </dd>
+           </div>
+       </dl>
 
-                    <a href="{{ route('fiu.technical-compliance.folders.show', $folder->slug) }}" class="mt-5 inline-flex text-sm font-black text-blue-700">Open folder →</a>
-                </article> 
+   <div class="mt-4 flex flex-wrap gap-2">
+    {{-- 🌟 FIXED: Verify $folder->institutions is iterable before trying to pass it to a loop --}}
+    @if(is_iterable($folder->institutions ?? null))
+        @forelse($folder->institutions as $institution)
+            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+                {{ $institution->code }}
+            </span>
+        @empty
+            <span class="text-xs font-semibold text-amber-700">Visible after institution assignment.</span>
+        @endforelse
+    @else
+        {{-- 🌟 FALLBACK: If it's an integer or missing, safely show the fallback text --}}
+        <span class="text-xs font-semibold text-amber-700">Visible after institution assignment.</span>
+    @endif
+</div>
+</article>
             @endforeach
-        </div>
+            </div>   
 
         @if(method_exists($folders, 'links'))
             <div class="mt-6">

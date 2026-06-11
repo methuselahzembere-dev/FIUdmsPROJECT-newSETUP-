@@ -65,8 +65,10 @@ Route::middleware(['auth', 'role:fiu_admin,fiu_reviewer'])->prefix('fiu')->as('f
     // 🌟 HIGH PRIORITY SPECIFIC TRACK GROUPS (Placed BEFORE resource wildcards)
     
     // Effectiveness Tracks Routing
-    Route::prefix('tracks/effectiveness')->name('effectiveness.folders')->group(function (): void {
+      Route::prefix('tracks/effectiveness')->name('effectiveness.folders')->group(function (): void {
         Route::get('/', [EffectivenessFolderController::class, 'index'])->name('.index');
+        Route::get('/{code}/documents/create', [EffectivenessFolderController::class, 'create'])->name('.documents.create');
+        Route::post('/{code}/documents', [EffectivenessFolderController::class, 'store'])->name('.documents.store');
         Route::get('/{code}', [EffectivenessFolderController::class, 'show'])->name('.show');
     });
 

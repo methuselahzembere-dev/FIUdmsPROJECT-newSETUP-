@@ -11,18 +11,45 @@ use Illuminate\View\View;
 
 class ComplianceTrackController extends Controller
 {
-    public function index(): View
+    /**
+     * Route Alias for your web.php: [ComplianceTrackController::class, 'technicalIndex']
+     */
+    public function technicalIndex(): View
     {
-        $tracks = DB::table('compliance_tracks')->orderBy('name')->paginate(15);
-
-        return view('fiu.tracks.index', compact('tracks'));
+        return $this->index();
     }
 
+    /**
+     * Display the index grid for Technical Compliance folders/tracks.
+     */
+  public function index(): View
+{
+    $folders = DB::table('compliance_tracks')
+        ->leftJoin('folders as f', 'compliance_tracks.id', '=', 'f.compliance_track_id') // Replace 'compliance_track_id' with your actual foreign key column name
+        ->select(
+            'compliance_tracks.*',
+            DB::raw('COUNT(f.id) as documents_count'), // If folders table represents your document containers
+            DB::raw('0 as institutions') // Static placeholder array/count to prevent line 61 from crashing
+        )
+        ->groupBy('compliance_tracks.id') // Ensure everything groups smoothly without duplicate rows
+        ->orderBy('compliance_tracks.name')
+        ->paginate(15);
+
+    return view('fiu.tracks.TechnicalCompliance.folders.index', compact('folders'));
+}
+
+    /**
+     * Show the form for creating a new technical compliance folder.
+     */
     public function create(): View
     {
-        return view('fiu.tracks.create');
+        // Pointing exactly to: resources/views/tracks/TechnicalCompliance/folders/create.blade.php
+        return view('fiu.tracks.TechnicalCompliance.folders.create');
     }
 
+    /**
+     * Store a newly created technical compliance track in the database.
+     */
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -36,7 +63,9 @@ class ComplianceTrackController extends Controller
 
         DB::table('compliance_tracks')->insert($validated);
 
-        return redirect()->route('fiu.tracks.index')->with('success', 'Compliance track created successfully.');
+        return redirect()
+            ->route('fiu.technical-compliance.folders.index')
+            ->with('success', 'Technical compliance track created successfully.');
     }
 
 public function show(int|string $track): View

@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             OutcomeAssignmentSeeder::class,
             DemoDocumentSeeder::class,
             EffectivenessImmediateOutcomesSeeder::class,
+            EffectivenessDocumentSeeder::class,
         ]);
     }
 }

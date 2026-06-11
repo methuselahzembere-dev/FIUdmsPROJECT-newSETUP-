@@ -10,12 +10,35 @@ class EffectivenessDocument extends Model
 {
     use HasFactory;
 
-    /**
-     * Change this only if your real table name is different.
-     */
     protected $table = 'effectiveness_documents';
 
-    protected $guarded = [];
+    protected $fillable = [
+        'effectiveness_sub_io_id',
+        'institution_id',
+        'title',
+        'name',
+        'reporting_institution',
+        'status',
+        'file_name',
+        'file_path',
+        'disk',
+        'date_logged',
+        'document_date',
+        'submitted_at',
+        'approved_at',
+        'remarks',
+        'meta',
+    ];
+
+    protected $casts = [
+        'effectiveness_sub_io_id' => 'integer',
+        'institution_id' => 'integer',
+        'date_logged' => 'date',
+        'document_date' => 'date',
+        'submitted_at' => 'datetime',
+        'approved_at' => 'datetime',
+        'meta' => 'array',
+    ];
 
     public function subImmediateOutcome(): BelongsTo
     {
@@ -24,6 +47,6 @@ class EffectivenessDocument extends Model
 
     public function institution(): BelongsTo
     {
-        return $this->belongsTo(Institution::class);
+        return $this->belongsTo(Institution::class, 'institution_id');
     }
 }
