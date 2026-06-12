@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Fiu;
 
 use App\Http\Controllers\Controller;
+use App\Models\Institution;  //for finding the isntitutions//
+use App\Models\TechnicalComplianceFolder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,53 +21,86 @@ class ComplianceTrackController extends Controller
         return $this->index();
     }
 
-    /**
-     * Display the index grid for Technical Compliance folders/tracks.
-     */
-  public function index(): View
-{
-    $folders = DB::table('compliance_tracks')
-        ->leftJoin('folders as f', 'compliance_tracks.id', '=', 'f.compliance_track_id') // Replace 'compliance_track_id' with your actual foreign key column name
-        ->select(
-            'compliance_tracks.*',
-            DB::raw('COUNT(f.id) as documents_count'), // If folders table represents your document containers
-            DB::raw('0 as institutions') // Static placeholder array/count to prevent line 61 from crashing
-        )
-        ->groupBy('compliance_tracks.id') // Ensure everything groups smoothly without duplicate rows
-        ->orderBy('compliance_tracks.name')
-        ->paginate(15);
+    
+public function index(): View
+    {
+        // Cleaned, isolated, and safe from MySQL 1054 Unknown column crashes
+        $folders = TechnicalComplianceFolder::query()
+            ->where('compliance_track_id', 1) 
+            ->with(['institution' => fn($query) => $query->select('id', 'name')])
+            ->withCount('documents as documents_count')
+            ->orderBy('name')
+            ->paginate(15);
 
-    return view('fiu.tracks.TechnicalCompliance.folders.index', compact('folders'));
-}
+        return view('fiu.tracks.TechnicalCompliance.folders.index', compact('folders'));
+    }
 
     /**
      * Show the form for creating a new technical compliance folder.
      */
-    public function create(): View
+public function create(): \Illuminate\View\View
     {
-        // Pointing exactly to: resources/views/tracks/TechnicalCompliance/folders/create.blade.php
-        return view('fiu.tracks.TechnicalCompliance.folders.create');
+        // 1. Fetch the multi-tenant institutions from the database
+        $institutions = \App\Models\Institution::query()
+            ->orderBy('name')
+            ->get();
+
+        // 🌟 FIXED: Return the compiled View layout object passing the collection payload
+        return view('fiu.tracks.TechnicalCompliance.folders.create', compact('institutions'));
     }
 
     /**
      * Store a newly created technical compliance track in the database.
      */
+/**
+     * Store a newly created technical compliance folder.
+     */
     public function store(Request $request): RedirectResponse
     {
+        // 1. Validate incoming parameters cleanly (accepting an array of institution IDs)
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
+            'institution_ids' => ['nullable', 'array'],
+            'institution_ids.*' => ['exists:institutions,id'],
         ]);
 
-        $validated['slug'] = Str::slug($validated['name']);
-        $validated['created_at'] = now();
-        $validated['updated_at'] = now();
+        $institutionIds = $validated['institution_ids'] ?? [];
 
-        DB::table('compliance_tracks')->insert($validated);
+        if (empty($institutionIds)) {
+            // Scenario A: No institutions selected -> Create a single Global Master Folder
+            TechnicalComplianceFolder::create([
+                'name' => $validated['name'],
+                'description' => $validated['description'],
+                'compliance_track_id' => 1, 
+                'institution_id' => null, // Global context marker
+                'created_by' => auth()->id(),
+                'is_active' => true,
+                'is_default' => false,
+                'is_visible_to_institutions' => true,
+                'sort_order' => 0,
+            ]);
+        } else {
+            // Scenario B: Checkboxes selected -> Create a dedicated folder row for each institution
+            foreach ($institutionIds as $institutionId) {
+                TechnicalComplianceFolder::create([
+                    'name' => $validated['name'],
+                    'description' => $validated['description'],
+                    'compliance_track_id' => 1, 
+                    'institution_id' => $institutionId, // Tied to specific tenant
+                    'created_by' => auth()->id(),
+                    'is_active' => true,
+                    'is_default' => false,
+                    'is_visible_to_institutions' => true,
+                    'sort_order' => 0,
+                ]);
+            }
+        }
 
+        //  Added the missing return statement to satisfy the RedirectResponse typehint!
         return redirect()
             ->route('fiu.technical-compliance.folders.index')
-            ->with('success', 'Technical compliance track created successfully.');
+            ->with('success', 'Technical compliance folder structure saved successfully.');
     }
 
 public function show(int|string $track): View

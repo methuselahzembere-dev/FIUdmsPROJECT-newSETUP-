@@ -1,4 +1,4 @@
-<x-app-layout>
+@extends('layouts.app')
 
 @section('content')
 <div class="space-y-6">
@@ -53,12 +53,7 @@
                 </tbody>
             </table>
         </div>
-     {{-- After (Line 56) 🌟 FIXED: Safe structural wrapper check --}}
-@if($documents instanceof \Illuminate\Pagination\LengthAwarePaginator)
-    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-        {{ $documents->links() }}
-    </div>
-@endif
+        <div class="px-6 py-4">{{ $documents->links() }}</div>
     </div>
 </div>
-</x-app-layout>
+@endsection

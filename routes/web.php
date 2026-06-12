@@ -72,11 +72,23 @@ Route::middleware(['auth', 'role:fiu_admin,fiu_reviewer'])->prefix('fiu')->as('f
         Route::get('/{code}', [EffectivenessFolderController::class, 'show'])->name('.show');
     });
 
+  // =========================================================================
     // Technical Compliance Tracks Routing
-    Route::prefix('tracks/technical-compliance')->name('technical-compliance.folders')->group(function (): void {
-        Route::get('/', [ComplianceTrackController::class, 'technicalIndex'])->name('.index');
-        Route::post('/folder', [ComplianceTrackController::class, 'storeTechnicalFolder'])->name('.store-folder');
-        Route::get('/{slug}', [ComplianceTrackController::class, 'show'])->name('.show'); 
+    // =========================================================================
+    Route::prefix('tracks/technical-compliance')->name('technical-compliance.folders.')->group(function (): void {
+        
+        // Matches: GET /fiu/tracks/technical-compliance -> Name: fiu.technical-compliance.folders.index
+        Route::get('/', [ComplianceTrackController::class, 'technicalIndex'])->name('index');
+        
+        // Matches: GET /fiu/tracks/technical-compliance/create -> Name: fiu.technical-compliance.folders.create
+        Route::get('/create', [ComplianceTrackController::class, 'create'])->name('create');
+        
+        // Matches: POST /fiu/tracks/technical-compliance -> Name: fiu.technical-compliance.folders.store
+        Route::post('/', [ComplianceTrackController::class, 'store'])->name('store');
+        
+        // Matches: GET /fiu/tracks/technical-compliance/{slug} -> Name: fiu.technical-compliance.folders.show
+        Route::get('/{slug}', [ComplianceTrackController::class, 'show'])->name('show');
+        
     });
 
     // Fallback Layout for base track definitions

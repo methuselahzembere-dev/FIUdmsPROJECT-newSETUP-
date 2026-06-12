@@ -7,11 +7,19 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 class TechnicalComplianceFolder extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes; // 🌟 Added SoftDeletes to match your migration's softDeletes() hook
+
+    /**
+     * 🌟 FORCE TABLE ALIGNMENT
+     * Overrides Eloquent's plural snake-case guessing so this model 
+     * targets your unified, multi-tenant 'folders' table precisely.
+     */
+    protected $table = 'folders';
 
     public const TRACK = 'technical';
 
@@ -24,43 +32,81 @@ class TechnicalComplianceFolder extends Model
         'Risk Assessments and Strategies',
     ];
 
+    /**
+     * 🌟 UPDATED FILLABLE ATTRIBUTES
+     * Expanded to allow structural context insertion (Track, Tenant isolation, and Parent Trees).
+     */
     protected $fillable = [
+        'compliance_track_id',
+        'institution_id',
+        'parent_id',
+        'created_by',
         'name',
         'slug',
         'description',
         'is_default',
+        'is_visible_to_institutions',
         'is_active',
-        'created_by',
+        'sort_order',
     ];
 
     protected $casts = [
         'is_default' => 'boolean',
+        'is_visible_to_institutions' => 'boolean',
         'is_active' => 'boolean',
+        'sort_order' => 'integer',
     ];
 
     protected static function booted(): void
     {
         static::creating(function (self $folder): void {
             $folder->slug ??= Str::slug($folder->name);
+            
+            // 🌟 BACKSTOP FORCE-BIND: Automatically enforce sorting fallback if empty
+            $folder->sort_order ??= 0;
         });
     }
 
+    /**
+     * Auditing trace tracking the staff member who spawned this folder node.
+     */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /**
+     * 🌟 UPDATED SELF-REFERENCING DOCUMENTS / CHILD RELATIONSHIP
+     * Since files are stored in the same tree pattern using 'parent_id',
+     * this counts or collects nested item records flawlessly.
+     */
     public function documents(): HasMany
     {
-        return $this->hasMany(TechnicalComplianceDocument::class, 'technical_compliance_folder_id');
+        return $this->hasMany(TechnicalComplianceFolder::class, 'parent_id');
     }
 
-    public function institutions(): BelongsToMany
+    /**
+     * 🌟 MULTI-TENANT CONTEXT ISOLATION
+     * Connects this folder container directly to its designated owning institution.
+     */
+    public function institution(): BelongsTo
     {
-        return $this->belongsToMany(ReportingInstitution::class, 'reporting_institution_technical_compliance_folder')
-            ->withTimestamps();
+        return $this->belongsTo(Institution::class, 'institution_id');
     }
 
+    /**
+     * 🌟 BACKWARDS COMPATIBILITY BLADE WRAPPER
+     * Keeps your index.blade.php from breaking if it calls the plural 'institutions' property.
+     * Since a folder row has an individual 'institution_id', it maps cleanly to a singular relation.
+     */
+    public function institutions(): BelongsTo
+    {
+        return $this->belongsTo(Institution::class, 'institution_id');
+    }
+
+    /**
+     * Global Scope filter to drop inactive file nodes out of the working view trees.
+     */
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
