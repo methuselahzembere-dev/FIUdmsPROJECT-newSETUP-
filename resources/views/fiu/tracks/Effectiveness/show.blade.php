@@ -1,22 +1,47 @@
 <x-app-layout>
-    <div
-        x-data="{ sidebarOpen: true }"
-        class="space-y-6"
-    >
-        <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div class="space-y-3">
-                <a
-                    href="{{ route('fiu.effectiveness.folders.index') }}"
-                    class="inline-flex items-center text-sm font-medium text-violet-700 transition hover:text-violet-800"
-                >
-                    ← Back to Immediate Outcomes
-                </a>
+    @php
+        $immediateOutcomes = $immediateOutcomes ?? collect();
+        $immediateOutcome = $immediateOutcome ?? $immediateOutcomes->first();
+        $subOutcomes = $subOutcomes ?? ($immediateOutcome?->subOutcomes?->values() ?? collect());
+        $selectedSubOutcome = $selectedSubOutcome ?? $subOutcomes->first();
+        $documents = $documents ?? new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
+        $documentsBySubIo = isset($documentsBySubIo) && is_array($documentsBySubIo)
+            ? $documentsBySubIo
+            : (isset($documentsBySubIo) && $documentsBySubIo instanceof \Illuminate\Support\Collection
+                ? $documentsBySubIo->all()
+                : []);
+        $documentCounts = isset($documentCounts) && is_array($documentCounts)
+            ? $documentCounts
+            : (isset($documentCounts) && $documentCounts instanceof \Illuminate\Support\Collection
+                ? $documentCounts->all()
+                : []);
+        $currentDocumentTotal = method_exists($documents, 'total') ? $documents->total() : (is_countable($documents) ? count($documents) : 0);
+    @endphp
 
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-violet-600">Effectiveness / Main Immediate Outcome</p>
-                    <h1 class="mt-2 text-2xl font-bold tracking-tight text-slate-900">{{ $immediateOutcome->code }}</h1>
+<div x-data="{ sidebarOpen: true }" class="space-y-6">
+    <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div class="space-y-3">
+            {{-- 🌟 FIXED: Added Native Browser Click Navigation to break past Alpine.js state hijacking --}}
+            <a
+                href="{{ route('fiu.effectiveness.folders.index') }}"
+                onclick="window.location.href='{{ route('fiu.effectiveness.folders.index') }}';"
+                class="inline-flex items-center text-sm font-black text-violet-700 transition hover:text-violet-900 group"
+            >
+                <span class="mr-1.5 transform group-hover:-translate-x-1 transition-transform inline-block">←</span> 
+                Back to Immediate Outcomes
+            </a>
+
+                <div class="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-violet-600">
+                        Effectiveness / Main Immediate Outcome
+                    </p>
+
+                    <h1 class="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                        {{ $immediateOutcome?->code ?? 'Effectiveness Dashboard' }}
+                    </h1>
+
                     <p class="mt-2 max-w-4xl text-sm leading-6 text-slate-600">
-                        {{ $immediateOutcome->description ?: 'Browse this Immediate Outcome through a split dashboard. Keep sibling sub-IOs visible in the left panel while reviewing documents in the main workspace.' }}
+                        {{ $immediateOutcome?->description ?: 'Browse this Immediate Outcome through a split dashboard. Keep sibling sub-IOs visible in the left panel while reviewing documents in the main workspace.' }}
                     </p>
                 </div>
             </div>
@@ -26,22 +51,34 @@
                     <p class="text-xs uppercase tracking-wide text-slate-500">Selected sub-IO</p>
                     <p class="mt-1 text-sm font-semibold text-slate-900">{{ $selectedSubOutcome?->code ?? 'None' }}</p>
                 </div>
+
                 <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                     <p class="text-xs uppercase tracking-wide text-slate-500">Sibling sub-IOs</p>
                     <p class="mt-1 text-sm font-semibold text-slate-900">{{ $subOutcomes->count() }}</p>
                 </div>
+
                 <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                     <p class="text-xs uppercase tracking-wide text-slate-500">Current documents</p>
-                    <p class="mt-1 text-sm font-semibold text-slate-900">{{ number_format($documents->total()) }}</p>
+                    <p class="mt-1 text-sm font-semibold text-slate-900">{{ number_format($currentDocumentTotal) }}</p>
                 </div>
             </div>
         </div>
 
+        @if (session('status'))
+            <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-sm">
+                {{ session('status') }}
+            </div>
+        @endif
+
         <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
             <div class="flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-3 sm:px-6">
                 <div>
-                    <h2 class="text-lg font-semibold text-slate-900">{{ $immediateOutcome->code }} split dashboard</h2>
-                    <p class="mt-1 text-sm text-slate-500">Select a sub-IO from the sidebar to update the document panel without leaving the main IO workspace.</p>
+                    <h2 class="text-lg font-semibold text-slate-900">
+                        {{ $immediateOutcome?->code ?? 'IO' }} Split Dashboard
+                    </h2>
+                    <p class="mt-1 text-sm text-slate-500">
+                        Select a sub-IO from the sidebar to update the document panel without leaving the main IO workspace.
+                    </p>
                 </div>
 
                 <button
@@ -63,14 +100,14 @@
                     <div x-show="sidebarOpen" x-transition class="h-full">
                         <div class="border-b border-slate-200 px-4 py-4">
                             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Sub-Immediate Outcomes</p>
-                            <p class="mt-2 text-sm leading-6 text-slate-600">File-explorer style navigation for all sub-IOs under {{ $immediateOutcome->code }}.</p>
+                            <p class="mt-2 text-sm leading-6 text-slate-600">
+                                File-explorer style navigation for all sub-IOs under {{ $immediateOutcome?->code ?? 'this IO' }}.
+                            </p>
                         </div>
 
                         <nav class="max-h-[calc(100vh-18rem)] space-y-2 overflow-y-auto p-3">
-                            @forelse($subOutcomes as $subOutcome)
-                                @php
-                                    $isActive = $selectedSubOutcome?->id === $subOutcome->id;
-                                @endphp
+                            @forelse ($subOutcomes as $subOutcome)
+                                @php $isActive = $selectedSubOutcome?->id === $subOutcome->id; @endphp
 
                                 <a
                                     href="{{ route('fiu.effectiveness.folders.show', ['code' => $immediateOutcome->code, 'sub_io' => $subOutcome->code]) }}"
@@ -78,8 +115,10 @@
                                 >
                                     <div class="flex items-start justify-between gap-3">
                                         <div class="min-w-0">
-                                            <p class="text-sm font-semibold {{ $isActive ? 'text-violet-700' : 'text-slate-900' }}">{{ $subOutcome->code }}</p>
-                                            <p class="mt-1 text-sm leading-5 text-slate-600 line-clamp-3">
+                                            <p class="text-sm font-semibold {{ $isActive ? 'text-violet-700' : 'text-slate-900' }}">
+                                                {{ $subOutcome->code }}
+                                            </p>
+                                            <p class="mt-1 line-clamp-3 text-sm leading-5 text-slate-600">
                                                 {{ $subOutcome->description ?: 'Sub-Immediate Outcome category for grouped Effectiveness documents.' }}
                                             </p>
                                         </div>
@@ -99,7 +138,7 @@
 
                 <section class="min-w-0 flex-1 bg-white">
                     <div class="border-b border-slate-200 px-4 py-5 sm:px-6">
-                        <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div>
                                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-violet-600">Document panel</p>
                                 <h3 class="mt-2 text-xl font-bold text-slate-900">
@@ -110,9 +149,20 @@
                                 </p>
                             </div>
 
-                            <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                                <p>Main IO: <span class="font-semibold text-slate-900">{{ $immediateOutcome->code }}</span></p>
-                                <p class="mt-1">Sub-IO: <span class="font-semibold text-slate-900">{{ $selectedSubOutcome?->code ?? 'None selected' }}</span></p>
+                            <div class="flex flex-col items-stretch gap-3 sm:items-end">
+                                <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                                    <p>Main IO: <span class="font-semibold text-slate-900">{{ $immediateOutcome?->code ?? '—' }}</span></p>
+                                    <p class="mt-1">Sub-IO: <span class="font-semibold text-slate-900">{{ $selectedSubOutcome?->code ?? 'None selected' }}</span></p>
+                                </div>
+
+                                @if ($immediateOutcome)
+                                    <a
+                                        href="{{ route('fiu.effectiveness.folders.documents.create', ['code' => $immediateOutcome->code, 'sub_io' => $selectedSubOutcome?->code]) }}"
+                                        class="inline-flex items-center justify-center rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700"
+                                    >
+                                        Add document to this sub-IO
+                                    </a>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -129,12 +179,19 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100 bg-white">
-                                @forelse($documents as $document)
+                                @forelse ($documents as $document)
                                     <tr class="transition hover:bg-slate-50/80">
-                                        <td class="px-6 py-4 font-medium text-slate-900">{{ $document->title ?? $document->name ?? 'Untitled document' }}</td>
+                                        <td class="px-6 py-4">
+                                            <div>
+                                                <p class="font-medium text-slate-900">{{ $document->title ?? $document->name ?? 'Untitled document' }}</p>
+                                                @if (!empty($document->file_name))
+                                                    <p class="mt-1 text-xs text-slate-500">{{ $document->file_name }}</p>
+                                                @endif
+                                            </div>
+                                        </td>
                                         <td class="px-6 py-4 text-slate-600">{{ $document->subImmediateOutcome->code ?? $document->io_sub_code ?? $selectedSubOutcome?->code ?? '—' }}</td>
                                         <td class="px-6 py-4 text-slate-600">{{ $document->institution->name ?? $document->reporting_institution ?? '—' }}</td>
-                                        <td class="px-6 py-4 text-slate-600">{{ optional($document->created_at ?? $document->date_logged)->format('d M Y') ?? '—' }}</td>
+                                        <td class="px-6 py-4 text-slate-600">{{ optional($document->date_logged ?? $document->created_at)->format('d M Y') ?? '—' }}</td>
                                         <td class="px-6 py-4">
                                             <span class="inline-flex rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
                                                 {{ str($document->status ?? 'logged')->replace('_', ' ')->title() }}
@@ -144,9 +201,21 @@
                                 @empty
                                     <tr>
                                         <td colspan="5" class="px-6 py-12 text-center">
-                                            <div class="mx-auto max-w-xl space-y-2">
+                                            <div class="mx-auto max-w-xl space-y-3">
                                                 <p class="text-sm font-medium text-slate-900">No documents found for this sub-IO.</p>
-                                                <p class="text-sm text-slate-500">Choose another sub-IO from the sidebar or begin assigning Effectiveness documents under {{ $selectedSubOutcome?->code ?? $immediateOutcome->code }}.</p>
+                                                <p class="text-sm text-slate-500">
+                                                    Choose another sub-IO from the sidebar or add the first Effectiveness document directly to {{ $selectedSubOutcome?->code ?? $immediateOutcome?->code ?? 'this workspace' }}.
+                                                </p>
+                                                @if ($immediateOutcome)
+                                                    <div>
+                                                        <a
+                                                            href="{{ route('fiu.effectiveness.folders.documents.create', ['code' => $immediateOutcome->code, 'sub_io' => $selectedSubOutcome?->code]) }}"
+                                                            class="inline-flex items-center rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700"
+                                                        >
+                                                            Create first document
+                                                        </a>
+                                                    </div>
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>
@@ -155,7 +224,7 @@
                         </table>
                     </div>
 
-                    @if($documents instanceof \Illuminate\Pagination\LengthAwarePaginator)
+                    @if ($documents instanceof \Illuminate\Pagination\LengthAwarePaginator)
                         <div class="border-t border-slate-200 px-6 py-4">
                             {{ $documents->links() }}
                         </div>

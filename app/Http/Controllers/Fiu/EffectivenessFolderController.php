@@ -3,51 +3,54 @@
 namespace App\Http\Controllers\Fiu;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Fiu\StoreEffectivenessDocumentRequest;
 use App\Models\EffectivenessDocument;
 use App\Models\EffectivenessImmediateOutcome;
-use App\Models\EffectivenessSubImmediateOutcome;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Eloquent\Relations\Relation;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class EffectivenessFolderController extends Controller
 {
-   public function index(): View
+    /**
+     * Display the Effectiveness workspace.
+     *
+     * Initial load is safe: it opens on the first active Immediate Outcome,
+     * preselects its first active sub-IO when available, and always passes the
+     * complete split-dashboard state contract expected by the Blade view.
+     */
+    public function index(): View
     {
-        $immediateOutcomes = EffectivenessImmediateOutcome::query()
-            // 🌟 FIXED: Removed 'Relation' so Laravel 13 handles the Builder instance dynamically
-            ->with(['subOutcomes' => fn ($query) => $query->active()->orderBy('sort_order')->orderBy('code')])
-            
-            // 🌟 FIXED: Removed 'Relation' here too so it accepts the Relation instance dynamically
-            ->withCount(['subOutcomes' => fn ($query) => $query->active()])
-            
-            ->active()
-            ->orderBy('sort_order')
-            ->orderBy('number')
-            ->get();
+        $immediateOutcomes = $this->immediateOutcomesWithSubOutcomes();
+        $documentCounts = $this->subIoDocumentCounts();
+        $immediateOutcome = $immediateOutcomes->first();
+        $subOutcomes = $immediateOutcome?->subOutcomes?->values() ?? collect();
+        $selectedSubOutcome = $this->resolveSelectedSubOutcome($immediateOutcome, request('sub_io'));
+        $documentsBySubIo = $this->documentsPerSubIo($subOutcomes->pluck('id')->all());
+        $documents = $this->documentsForSelection($immediateOutcome, $selectedSubOutcome);
 
-        // Safe fallback if this method exists, otherwise you can comment it out
-        $documentCounts = method_exists($this, 'subIoDocumentCounts') ? $this->subIoDocumentCounts() : [];
-
-        return view('fiu.tracks.Effectiveness.index', [
-            'immediateOutcomes' => $immediateOutcomes,
-            'documentCounts'    => $documentCounts,
-        ]);
+        return view('fiu.tracks.Effectiveness.index', $this->viewData(
+            $immediateOutcomes,
+            $immediateOutcome,
+            $subOutcomes,
+            $selectedSubOutcome,
+            $documents,
+            $documentsBySubIo,
+            $documentCounts
+        ));
     }
 
+    /**
+     * Display one main IO as a split dashboard with sub-IO navigation.
+     */
     public function show(string $code): View
     {
-        $immediateOutcome = EffectivenessImmediateOutcome::query()
-            ->active()
-            ->with(['subOutcomes' => fn (Relation $query) => $query->active()->orderBy('sort_order')->orderBy('code')])
-            ->where('code', strtoupper($code))
-            ->first();
+        $immediateOutcomes = $this->immediateOutcomesWithSubOutcomes();
+        $immediateOutcome = $immediateOutcomes
+            ->first(fn (EffectivenessImmediateOutcome $outcome) => strtoupper($outcome->code) === strtoupper($code));
 
         if (! $immediateOutcome) {
             throw (new ModelNotFoundException())->setModel(EffectivenessImmediateOutcome::class, [$code]);
@@ -56,134 +59,65 @@ class EffectivenessFolderController extends Controller
         $subOutcomes = $immediateOutcome->subOutcomes->values();
         $selectedSubOutcome = $this->resolveSelectedSubOutcome($immediateOutcome, request('sub_io'));
         $documentsBySubIo = $this->documentsPerSubIo($subOutcomes->pluck('id')->all());
+        $documents = $this->documentsForSelection($immediateOutcome, $selectedSubOutcome);
+        $documentCounts = $this->subIoDocumentCounts();
 
-        $documents = $this->documentTableExists()
-            ? EffectivenessDocument::query()
-                ->with($this->documentRelations())
-                ->when(
-                    $selectedSubOutcome && $this->documentHasSubIoColumn(),
-                    fn (Builder $query) => $query->where('effectiveness_sub_io_id', $selectedSubOutcome->id)
-                )
-                ->when(
-                    ! $selectedSubOutcome && $this->documentHasSubIoColumn(),
-                    fn (Builder $query) => $query->whereRaw('1 = 0')
-                )
-                ->when(
-                    $selectedSubOutcome && ! $this->documentHasSubIoColumn() && $this->documentHasSubIoCodeColumn(),
-                    fn (Builder $query) => $query->where('io_sub_code', $selectedSubOutcome->code)
-                )
-                ->when(
-                    ! $selectedSubOutcome && ! $this->documentHasSubIoColumn() && $this->documentHasSubIoCodeColumn(),
-                    fn (Builder $query) => $query->whereRaw('1 = 0')
-                )
-                ->when(
-                    ! $this->documentHasSubIoColumn() && ! $this->documentHasSubIoCodeColumn() && $this->documentHasMainIoCodeColumn(),
-                    fn (Builder $query) => $query->where('io_main_code', $immediateOutcome->code)
-                )
-                ->when($this->documentHasStatusColumn(), fn (Builder $query) => $query->orderByRaw($this->documentStatusOrderSql()))
-                ->latest($this->documentsLatestColumn())
-                ->paginate(15)
-                ->withQueryString()
-            : EffectivenessDocument::query()->whereRaw('1 = 0')->paginate(15);
+        return view('fiu.tracks.Effectiveness.show', $this->viewData(
+            $immediateOutcomes,
+            $immediateOutcome,
+            $subOutcomes,
+            $selectedSubOutcome,
+            $documents,
+            $documentsBySubIo,
+            $documentCounts
+        ));
+    }
 
-        return view('fiu.tracks.Effectiveness.show', [
+    /**
+     * @return \Illuminate\Support\Collection<int, \App\Models\EffectivenessImmediateOutcome>
+     */
+protected function immediateOutcomesWithSubOutcomes(): Collection
+    {
+        return EffectivenessImmediateOutcome::query()
+            ->with([
+                // 🌟 FIXED: Dropped type-hints so both HasMany and Builder contexts work flawlessly
+                'subOutcomes' => fn ($query) => $query->active()->orderBy('sort_order')->orderBy('code'),
+            ])
+            ->withCount([
+                'subOutcomes' => fn ($query) => $query->active(),
+            ])
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('number')
+            ->get();
+    }
+
+    protected function viewData(
+        Collection $immediateOutcomes,
+        ?EffectivenessImmediateOutcome $immediateOutcome,
+        Collection $subOutcomes,
+        $selectedSubOutcome,
+        LengthAwarePaginator $documents,
+        array $documentsBySubIo,
+        array $documentCounts
+    ): array {
+        return [
+            'immediateOutcomes' => $immediateOutcomes,
             'immediateOutcome' => $immediateOutcome,
             'subOutcomes' => $subOutcomes,
             'selectedSubOutcome' => $selectedSubOutcome,
             'documents' => $documents,
             'documentsBySubIo' => $documentsBySubIo,
-            'documentStatuses' => $this->documentStatusOptions(),
-        ]);
+            'documentCounts' => $documentCounts,
+        ];
     }
 
-    public function create(string $code): View
+    protected function resolveSelectedSubOutcome(?EffectivenessImmediateOutcome $immediateOutcome, ?string $requestedSubIo)
     {
-        $immediateOutcome = EffectivenessImmediateOutcome::query()
-            ->active()
-            ->with(['subOutcomes' => fn (Relation $query) => $query->active()->orderBy('sort_order')->orderBy('code')])
-            ->where('code', strtoupper($code))
-            ->first();
-
         if (! $immediateOutcome) {
-            throw (new ModelNotFoundException())->setModel(EffectivenessImmediateOutcome::class, [$code]);
+            return null;
         }
 
-        $selectedSubOutcome = $this->resolveSelectedSubOutcome($immediateOutcome, request('sub_io'));
-
-        return view('fiu.tracks.Effectiveness.create-document', [
-            'immediateOutcome' => $immediateOutcome,
-            'subOutcomes' => $immediateOutcome->subOutcomes->values(),
-            'selectedSubOutcome' => $selectedSubOutcome,
-            'documentStatuses' => $this->documentStatusOptions(),
-        ]);
-    }
-
-    public function store(StoreEffectivenessDocumentRequest $request, string $code): RedirectResponse
-    {
-        $immediateOutcome = EffectivenessImmediateOutcome::query()
-            ->active()
-            ->where('code', strtoupper($code))
-            ->first();
-
-        if (! $immediateOutcome) {
-            throw (new ModelNotFoundException())->setModel(EffectivenessImmediateOutcome::class, [$code]);
-        }
-
-        if ($immediateOutcome->id !== $request->integer('immediate_outcome_id')) {
-            abort(422, 'The selected main IO does not match the current workspace.');
-        }
-
-        $subOutcome = EffectivenessSubImmediateOutcome::query()
-            ->whereKey($request->integer('effectiveness_sub_io_id'))
-            ->where('immediate_outcome_id', $immediateOutcome->id)
-            ->firstOrFail();
-
-        $data = $request->validated();
-        $uploadedFile = $request->file('document_file');
-        $storedDisk = $data['disk'] ?? 'public';
-        $storedPath = $data['external_file_path'] ?? null;
-        $storedName = $data['external_file_name'] ?? null;
-
-        if ($uploadedFile) {
-            $directory = 'effectiveness-documents/'.Str::slug($immediateOutcome->code).'/'.Str::slug($subOutcome->code);
-            $storedPath = $uploadedFile->store($directory, $storedDisk);
-            $storedName = $uploadedFile->getClientOriginalName();
-        }
-
-        $document = EffectivenessDocument::query()->create([
-            'effectiveness_sub_io_id' => $subOutcome->id,
-            'title' => $data['title'],
-            'name' => $data['name'] ?? $data['title'],
-            'reporting_institution' => $data['reporting_institution'],
-            'status' => $data['status'],
-            'file_name' => $storedName,
-            'file_path' => $storedPath,
-            'disk' => $storedDisk,
-            'date_logged' => $data['date_logged'],
-            'document_date' => $data['document_date'] ?? null,
-            'submitted_at' => in_array($data['status'], ['submitted', 'under_review', 'approved'], true) ? now() : null,
-            'approved_at' => $data['status'] === 'approved' ? now() : null,
-            'remarks' => $data['remarks'] ?? null,
-            'meta' => array_filter([
-                'uploaded_via' => 'split_dashboard_form',
-                'main_io_code' => $immediateOutcome->code,
-                'sub_io_code' => $subOutcome->code,
-                'storage_url' => $storedPath ? Storage::disk($storedDisk)->url($storedPath) : null,
-                'mime_type' => $uploadedFile?->getClientMimeType(),
-                'size_bytes' => $uploadedFile?->getSize(),
-            ], fn ($value) => ! is_null($value) && $value !== ''),
-        ]);
-
-        return redirect()
-            ->route('fiu.effectiveness.folders.show', [
-                'code' => $immediateOutcome->code,
-                'sub_io' => $subOutcome->code,
-            ])
-            ->with('status', 'Document "'.$document->title.'" was added successfully to '.$subOutcome->code.'.');
-    }
-
-    protected function resolveSelectedSubOutcome(EffectivenessImmediateOutcome $immediateOutcome, ?string $requestedSubIo)
-    {
         $subOutcomes = $immediateOutcome->subOutcomes;
 
         if ($subOutcomes->isEmpty()) {
@@ -201,6 +135,47 @@ class EffectivenessFolderController extends Controller
         return $subOutcomes->first();
     }
 
+    protected function documentsForSelection(?EffectivenessImmediateOutcome $immediateOutcome, $selectedSubOutcome): LengthAwarePaginator
+    {
+        if (! $this->documentTableExists()) {
+            return $this->emptyDocumentsPaginator();
+        }
+
+        $query = EffectivenessDocument::query()->with($this->documentRelations());
+
+        if ($selectedSubOutcome && $this->documentHasSubIoColumn()) {
+            $query->where('effectiveness_sub_io_id', $selectedSubOutcome->id);
+        } elseif ($selectedSubOutcome && ! $this->documentHasSubIoColumn() && $this->documentHasSubIoCodeColumn()) {
+            $query->where('io_sub_code', $selectedSubOutcome->code);
+        } elseif (! $selectedSubOutcome && $immediateOutcome && ! $this->documentHasSubIoColumn() && ! $this->documentHasSubIoCodeColumn() && $this->documentHasMainIoCodeColumn()) {
+            $query->where('io_main_code', $immediateOutcome->code);
+        } else {
+            $query->whereRaw('1 = 0');
+        }
+
+        if ($this->documentHasStatusColumn()) {
+            $query->orderByRaw($this->documentStatusOrderSql());
+        }
+
+        return $query
+            ->latest($this->documentsLatestColumn())
+            ->paginate(15)
+            ->withQueryString();
+    }
+
+    protected function emptyDocumentsPaginator(): LengthAwarePaginator
+    {
+        return EffectivenessDocument::query()
+            ->whereRaw('1 = 0')
+            ->paginate(15)
+            ->withQueryString();
+    }
+
+    /**
+     * Provide optional eager-loaded relations only when the model supports them.
+     *
+     * @return array<int, string>
+     */
     protected function documentRelations(): array
     {
         if (! $this->documentTableExists()) {
@@ -222,17 +197,21 @@ class EffectivenessFolderController extends Controller
 
     protected function subIoDocumentCounts(): array
     {
-        if (! $this->documentTableExists() || ! $this->documentHasSubIoColumn()) {
+        if (! $this->documentTableExists()) {
             return [];
         }
 
-        return EffectivenessDocument::query()
-            ->selectRaw('effectiveness_sub_io_id, count(*) as aggregate')
-            ->whereNotNull('effectiveness_sub_io_id')
-            ->groupBy('effectiveness_sub_io_id')
-            ->pluck('aggregate', 'effectiveness_sub_io_id')
-            ->map(fn ($count) => (int) $count)
-            ->all();
+        if ($this->documentHasSubIoColumn()) {
+            return EffectivenessDocument::query()
+                ->selectRaw('effectiveness_sub_io_id, count(*) as aggregate')
+                ->whereNotNull('effectiveness_sub_io_id')
+                ->groupBy('effectiveness_sub_io_id')
+                ->pluck('aggregate', 'effectiveness_sub_io_id')
+                ->map(fn ($count) => (int) $count)
+                ->all();
+        }
+
+        return [];
     }
 
     protected function documentsPerSubIo(array $subIoIds): array
@@ -281,18 +260,6 @@ class EffectivenessFolderController extends Controller
                 when status = 'archived' then 5
                 else 6
             end";
-    }
-
-    protected function documentStatusOptions(): array
-    {
-        return [
-            'logged' => 'Logged',
-            'submitted' => 'Submitted',
-            'under_review' => 'Under review',
-            'revision_requested' => 'Revision requested',
-            'approved' => 'Approved',
-            'archived' => 'Archived',
-        ];
     }
 
     protected function documentTableExists(): bool
