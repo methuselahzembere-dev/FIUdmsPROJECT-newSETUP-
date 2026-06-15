@@ -12,10 +12,10 @@ use Illuminate\Support\Str;
 
 class TechnicalComplianceFolder extends Model
 {
-    use HasFactory, SoftDeletes; // 🌟 Added SoftDeletes to match your migration's softDeletes() hook
+    use HasFactory, SoftDeletes; // SoftDeletes to match your migration's softDeletes() hook
 
     /**
-     * 🌟 FORCE TABLE ALIGNMENT
+     *  FORCE TABLE ALIGNMENT
      * Overrides Eloquent's plural snake-case guessing so this model 
      * targets your unified, multi-tenant 'folders' table precisely.
      */
@@ -33,7 +33,7 @@ class TechnicalComplianceFolder extends Model
     ];
 
     /**
-     * 🌟 UPDATED FILLABLE ATTRIBUTES
+     *  UPDATED FILLABLE ATTRIBUTES
      * Expanded to allow structural context insertion (Track, Tenant isolation, and Parent Trees).
      */
     protected $fillable = [
@@ -75,6 +75,11 @@ class TechnicalComplianceFolder extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function updater(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
     /**
      * 🌟 UPDATED SELF-REFERENCING DOCUMENTS / CHILD RELATIONSHIP
      * Since files are stored in the same tree pattern using 'parent_id',
@@ -82,7 +87,7 @@ class TechnicalComplianceFolder extends Model
      */
     public function documents(): HasMany
     {
-        return $this->hasMany(TechnicalComplianceFolder::class, 'parent_id');
+        return $this->hasMany(TechnicalComplianceDocument::class, 'folder_id');
     }
 
     /**

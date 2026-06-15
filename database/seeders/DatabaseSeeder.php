@@ -10,12 +10,13 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             InstitutionSeeder::class,
-            ComplianceFrameworkSeeder::class, // Generates the core compliance tracks
-            TechnicalComplianceFolderSeeder::class, // 🌟 Added here: Seeds default track folders
+            ComplianceFrameworkSeeder::class, 
+            TechnicalComplianceFolderSeeder::class, 
             UserSeeder::class,
             OutcomeAssignmentSeeder::class,
             DemoDocumentSeeder::class,
             EffectivenessImmediateOutcomesSeeder::class,
+            TechnicalComplianceDocumentSeeder::class,
             EffectivenessDocumentSeeder::class,
         ]);
     }

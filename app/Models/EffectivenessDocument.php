@@ -28,6 +28,7 @@ class EffectivenessDocument extends Model
         'approved_at',
         'remarks',
         'meta',
+        'updated_by'
     ];
 
     protected $casts = [
@@ -48,5 +49,19 @@ class EffectivenessDocument extends Model
     public function institution(): BelongsTo
     {
         return $this->belongsTo(Institution::class, 'institution_id');
+    }
+
+    public function updater(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    /**
+     * Relationship tracking the user who uploaded/created this document.
+     */
+    public function creator(): BelongsTo
+    {
+        // Adjust 'user_id' if your original column uses 'created_by'
+        return $this->belongsTo(User::class, 'user_id'); 
     }
 }

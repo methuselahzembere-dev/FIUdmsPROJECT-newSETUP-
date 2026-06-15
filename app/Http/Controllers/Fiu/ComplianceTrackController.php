@@ -24,10 +24,19 @@ class ComplianceTrackController extends Controller
     
 public function index(): View
     {
-        // Cleaned, isolated, and safe from MySQL 1054 Unknown column crashes
+        // Cleaned, isolated, and highly optimized for your split-view layout matrix
         $folders = TechnicalComplianceFolder::query()
             ->where('compliance_track_id', 1) 
-            ->with(['institution' => fn($query) => $query->select('id', 'name')])
+            ->with([
+                // 1. Load institutional tenant identification context
+                'institution' => fn($query) => $query->select('id', 'name'),
+                
+                // 2. 🌟 CRITICAL FIX: Eager-load real documents along with their audit trails!
+                'documents' => fn($query) => $query->with([
+                    'creator:id,name', // Loads the username of the person who uploaded it
+                    'updater:id,name'  // Loads the username of the last person who edited it
+                ])
+            ])
             ->withCount('documents as documents_count')
             ->orderBy('name')
             ->paginate(15);

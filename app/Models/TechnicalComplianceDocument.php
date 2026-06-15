@@ -26,6 +26,7 @@ class TechnicalComplianceDocument extends Model
         'title',
         'description',
         'stored_path',
+        'updated_by',
         'original_filename',
         'mime_type',
         'status',
@@ -45,6 +46,27 @@ class TechnicalComplianceDocument extends Model
         return $this->belongsTo(TechnicalComplianceFolder::class, 'technical_compliance_folder_id');
     }
 
+
+    public function creator(): BelongsTo
+    {
+        
+        return $this->belongsTo(User::class, 'uploaded_by');
+    }
+
+    /**
+     * Relationship tracking the user who performed the latest edit update.
+     */
+    public function updater(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+   
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
     public function institution(): BelongsTo
     {
         return $this->belongsTo(ReportingInstitution::class, 'reporting_institution_id');
@@ -53,11 +75,6 @@ class TechnicalComplianceDocument extends Model
     public function uploader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploaded_by');
-    }
-
-    public function reviewer(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'reviewed_by');
     }
 
     public function revisions(): HasMany

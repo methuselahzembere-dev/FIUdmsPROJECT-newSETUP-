@@ -25,6 +25,7 @@ return new class extends Migration
             
             // Staff auditing trace tracking who created this custom workspace folder
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
 
             // Folder details
             $table->string('name');
