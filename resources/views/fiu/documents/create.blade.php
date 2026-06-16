@@ -88,41 +88,82 @@
 
                     <div class="space-y-6 p-6">
                         
-                        <div id="section-technical-directories" class="grid gap-5 md:grid-cols-1">
-                            <div>
-                                <label for="technical_folder_id" class="block text-xs font-black uppercase tracking-wider text-slate-700">Target Technical Compliance Folder</label>
-                                <select id="technical_folder_id" name="technical_folder_id" class="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50/40 p-2.5 text-sm font-medium outline-none focus:border-blue-600 focus:bg-white transition-all">
-                                    <option value="" disabled @selected(!old('technical_folder_id'))>Select specific framework folder...</option>
-                                    @foreach($technicalFolders ?? [] as $tFolder)
-                                        <option value="{{ $tFolder->id }}" @selected(old('technical_folder_id') == $tFolder->id)>{{ $tFolder->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
+                   <div id="section-technical-directories" class="space-y-3">
+    <div class="flex items-center justify-between pb-1">
+        <div>
+            <label class="block text-xs font-black uppercase tracking-wider text-slate-700">1. Select Target Technical Compliance Folders</label>
+            <p class="text-xxs text-slate-500 mt-0.5">You can select multiple structural folders across the unified workspace framework.</p>
+        </div>
+        <button type="button" 
+                onclick="toggleCheckboxGroup('tech-folder-cb')" 
+                class="text-[10px] font-extrabold text-blue-600 hover:text-blue-800 uppercase tracking-wide cursor-pointer select-none bg-blue-50 px-2.5 py-1 rounded-md transition-colors hover:bg-blue-100/70">
+            Toggle All Folders
+        </button>
+    </div>
 
-                        <div id="section-effectiveness-directories" class="hidden grid gap-5 md:grid-cols-2">
-                            <div>
-                                <label for="immediate_outcome_id" class="block text-xs font-black uppercase tracking-wider text-slate-700">Main Immediate Outcome (IO)</label>
-                                <select id="immediate_outcome_id" name="immediate_outcome_id" onchange="filterSubOutcomesByMainIO(this.value)" class="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50/40 p-2.5 text-sm font-medium outline-none focus:border-violet-600 focus:bg-white transition-all">
-                                    <option value="" disabled @selected(!old('immediate_outcome_id'))>Select Core IO (1 to 11)...</option>
-                                    @foreach($immediateOutcomes ?? [] as $io)
-                                        <option value="{{ $io->id }}" @selected(old('immediate_outcome_id') == $io->id)>{{ $io->code }} - {{ $io->title }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
+    <div class="max-h-64 overflow-y-auto p-3 bg-slate-50/40 rounded-2xl border border-slate-200/60 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+        @foreach($technicalFolders ?? [] as $tFolder)
+            <label class="tech-folder-wrapper flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200/60 shadow-2xs hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer select-none group">
+                <input type="checkbox" 
+                       name="technical_folder_ids[]" 
+                       value="{{ $tFolder->id }}" 
+                       class="tech-folder-cb rounded border-slate-300 text-blue-600 focus:ring-blue-500 mt-0.5 h-4 w-4 transition-transform group-hover:scale-105" 
+                       @checked(is_array(old('technical_folder_ids')) && in_array($tFolder->id, old('technical_folder_ids')))>
+                <div class="min-w-0 flex-1">
+                    <span class="block text-xs font-bold text-slate-800 truncate group-hover:text-blue-900 transition-colors">{{ $tFolder->name }}</span>
+                    @if($tFolder->description)
+                        <span class="block text-[10px] font-medium text-slate-400 line-clamp-1 mt-0.5 leading-tight">{{ $tFolder->description }}</span>
+                    @endif
+                </div>
+            </label>
+        @endforeach
+    </div>
+</div>
 
-                            <div>
-                                <label for="effectiveness_sub_io_id" class="block text-xs font-black uppercase tracking-wider text-slate-700">Specific Sub-IO Outcome Target</label>
-                                <select id="effectiveness_sub_io_id" name="effectiveness_sub_io_id" class="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50/40 p-2.5 text-sm font-medium outline-none focus:border-violet-600 focus:bg-white transition-all">
-                                    <option value="" data-io="all" disabled @selected(!old('effectiveness_sub_io_id'))>Select matching sub-indicator outcome...</option>
-                                    @foreach($subOutcomes ?? [] as $subIo)
-                                        <option value="{{ $subIo->id }}" data-io="{{ $subIo->immediate_outcome_id }}" class="sub-io-option" @selected(old('effectiveness_sub_io_id') == $subIo->id)>
-                                            {{ $subIo->code }} - {{ $subIo->title }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
+        <div id="section-effectiveness-directories" class="hidden space-y-4">
+    
+    <div class="space-y-2">
+        <label class="block text-xs font-black uppercase tracking-wider text-slate-700">1. Choose an Immediate Outcome (IO) to manage its sub-IOs</label>
+        <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-11">
+            @foreach($immediateOutcomes ?? [] as $io)
+                <button type="button" 
+                        id="btn-io-{{ $io->id }}" 
+                        onclick="setActiveIOContext({{ $io->id }})" 
+                        class="io-tab-btn flex flex-col items-center justify-center p-2.5 rounded-xl border-2 text-center transition-all cursor-pointer select-none bg-white border-slate-200 hover:bg-slate-50">
+                    <span class="text-xs font-black text-slate-900">{{ $io->code }}</span>
+                    <span id="badge-io-{{ $io->id }}" class="hidden mt-1 px-1.5 py-0.5 text-[9px] font-black bg-violet-600 text-white rounded-md">0 selected</span>
+                </button>
+            @endforeach
+        </div>
+    </div>
+
+    <div class="space-y-2">
+        <div class="flex items-center justify-between">
+            <label class="block text-xs font-black uppercase tracking-wider text-slate-700">2. Select related sub-IO targets for the active IO</label>
+            <button type="button" onclick="toggleActiveSubIOCbGroup()" class="text-[10px] font-extrabold text-violet-600 hover:text-violet-800 uppercase tracking-wide cursor-pointer select-none">Toggle All in Active IO</button>
+        </div>
+        
+        <div class="max-h-60 overflow-y-auto p-3 bg-slate-50/40 rounded-2xl border border-slate-200/60 grid gap-2 sm:grid-cols-2">
+            @foreach($subOutcomes ?? [] as $subIo)
+                <div class="sub-io-wrapper hidden" data-io="{{ $subIo->immediate_outcome_id }}">
+                    <label class="flex items-start gap-3 p-3 w-full rounded-xl bg-white border border-slate-200/60 shadow-2xs hover:bg-slate-50 transition-all cursor-pointer select-none">
+                        <input type="checkbox" 
+                               name="effectiveness_sub_io_ids[]" 
+                               value="{{ $subIo->id }}" 
+                               data-parent-io="{{ $subIo->immediate_outcome_id }}"
+                               class="sub-io-cb rounded border-slate-300 text-violet-600 focus:ring-violet-500 mt-0.5 h-4 w-4" 
+                               @checked(is_array(old('effectiveness_sub_io_ids')) && in_array($subIo->id, old('effectiveness_sub_io_ids')))>
+                        <div class="min-w-0">
+                            <span class="block text-xs font-bold text-slate-800">{{ $subIo->code }}</span>
+                            <span class="block text-[11px] font-medium text-slate-500 mt-0.5 leading-normal">{{ $subIo->title }}</span>
                         </div>
+                    </label>
+                </div>
+            @endforeach
+        </div>
+    </div>
+
+</div>
 
                         <div class="grid gap-5 md:grid-cols-2">
                             <div class="md:col-span-2">
@@ -251,97 +292,206 @@
         </form>
     </div>
 
-    <script>
-        /**
-         * Orchestrates immediate layout transitions and changes styles matching the active compliance track
-         */
-        function switchWorkspaceContext(track) {
-            const techSection = document.getElementById('section-technical-directories');
-            const effSection = document.getElementById('section-effectiveness-directories');
-            const submitBtn = document.getElementById('submitButtonWidget');
+<script>
+    // Keeps track of which main IO tab ID is currently selected
+    let currentActiveIOId = null;
+
+    /**
+     * Toggles between Technical and Effectiveness track views
+     */
+    function switchWorkspaceContext(track) {
+        const techSection = document.getElementById('section-technical-directories');
+        const effSection = document.getElementById('section-effectiveness-directories');
+        const submitBtn = document.getElementById('submitButtonWidget');
+        
+        const techCardLabel = document.getElementById('label-track-technical');
+        const effCardLabel = document.getElementById('label-track-effectiveness');
+        const techIconBox = document.getElementById('icon-container-technical');
+        const effIconBox = document.getElementById('icon-container-effectiveness');
+
+        if (track === 'technical') {
+            techSection.classList.remove('hidden');
+            effSection.classList.add('hidden');
             
-            const techCardLabel = document.getElementById('label-track-technical');
-            const effCardLabel = document.getElementById('label-track-effectiveness');
-            const techIconBox = document.getElementById('icon-container-technical');
-            const effIconBox = document.getElementById('icon-container-effectiveness');
+            // Clear effectiveness inputs when switching away to keep payload clean
+            resetCheckboxGroupStates('sub-io-cb');
+            resetActiveIOTabs();
 
-            if (track === 'technical') {
-                // 1. Swap Dropdown Sub-Sections
-                techSection.classList.remove('hidden');
-                effSection.classList.add('hidden');
-                
-                // 2. Clear out inputs in the hidden fields to prevent messy structural payloads
-                document.getElementById('immediate_outcome_id').value = "";
-                document.getElementById('effectiveness_sub_io_id').value = "";
+            submitBtn.className = "inline-flex h-10 items-center justify-center rounded-xl bg-blue-700 px-5 text-xs font-black text-white transition hover:bg-blue-800 shadow-sm cursor-pointer whitespace-nowrap";
+            techCardLabel.className = "relative flex flex-col p-4 rounded-2xl border-2 bg-white cursor-pointer hover:bg-slate-50/50 transition-all select-none group border-blue-600 ring-1 ring-blue-600/10";
+            effCardLabel.className = "relative flex flex-col p-4 rounded-2xl border-2 bg-white cursor-pointer hover:bg-slate-50/50 transition-all select-none group border-slate-200";
+            
+            techIconBox.className = "p-2 rounded-xl bg-blue-50 text-blue-700 group-hover:scale-105 transition-transform";
+            effIconBox.className = "p-2 rounded-xl bg-slate-100 text-slate-600 group-hover:scale-105 transition-transform";
+        } else if (track === 'effectiveness') {
+            techSection.classList.add('hidden');
+            effSection.classList.remove('hidden');
 
-                // 3. Re-theme Action UI Components (Blue for Technical Compliance)
-                submitBtn.className = "inline-flex h-10 items-center justify-center rounded-xl bg-blue-700 px-5 text-xs font-black text-white transition hover:bg-blue-800 shadow-sm cursor-pointer whitespace-nowrap";
-                techCardLabel.className = "relative flex flex-col p-4 rounded-2xl border-2 bg-white cursor-pointer hover:bg-slate-50/50 transition-all select-none group border-blue-600 ring-1 ring-blue-600/10";
-                effCardLabel.className = "relative flex flex-col p-4 rounded-2xl border-2 bg-white cursor-pointer hover:bg-slate-50/50 transition-all select-none group border-slate-200";
-                
-                techIconBox.className = "p-2 rounded-xl bg-blue-50 text-blue-700 group-hover:scale-105 transition-transform";
-                effIconBox.className = "p-2 rounded-xl bg-slate-100 text-slate-600 group-hover:scale-105 transition-transform";
-            } else if (track === 'effectiveness') {
-                // 1. Swap Dropdown Sub-Sections
-                techSection.classList.add('hidden');
-                effSection.classList.remove('hidden');
+            resetCheckboxGroupStates('tech-folder-cb');
 
-                // 2. Clear out inputs in the technical compliance fields
-                document.getElementById('technical_folder_id').value = "";
-
-                // 3. Re-theme Action UI Components (Violet for Effectiveness Assessment)
-                submitBtn.className = "inline-flex h-10 items-center justify-center rounded-xl bg-violet-600 px-5 text-xs font-black text-white transition hover:bg-violet-700 shadow-sm cursor-pointer whitespace-nowrap";
-                techCardLabel.className = "relative flex flex-col p-4 rounded-2xl border-2 bg-white cursor-pointer hover:bg-slate-50/50 transition-all select-none group border-slate-200";
-                effCardLabel.className = "relative flex flex-col p-4 rounded-2xl border-2 bg-white cursor-pointer hover:bg-slate-50/50 transition-all select-none group border-violet-600 ring-1 ring-violet-600/10";
-                
-                techIconBox.className = "p-2 rounded-xl bg-slate-100 text-slate-600 group-hover:scale-105 transition-transform";
-                effIconBox.className = "p-2 rounded-xl bg-violet-50 text-violet-700 group-hover:scale-105 transition-transform";
-                
-                // Initialize sub outcome views based on active old values if loaded
-                filterSubOutcomesByMainIO(document.getElementById('immediate_outcome_id').value);
+            submitBtn.className = "inline-flex h-10 items-center justify-center rounded-xl bg-violet-600 px-5 text-xs font-black text-white transition hover:bg-violet-700 shadow-sm cursor-pointer whitespace-nowrap";
+            techCardLabel.className = "relative flex flex-col p-4 rounded-2xl border-2 bg-white cursor-pointer hover:bg-slate-50/50 transition-all select-none group border-slate-200";
+            effCardLabel.className = "relative flex flex-col p-4 rounded-2xl border-2 bg-white cursor-pointer hover:bg-slate-50/50 transition-all select-none group border-violet-600 ring-1 ring-violet-600/10";
+            
+            techIconBox.className = "p-2 rounded-xl bg-slate-100 text-slate-600 group-hover:scale-105 transition-transform";
+            effIconBox.className = "p-2 rounded-xl bg-violet-50 text-violet-700 group-hover:scale-105 transition-transform";
+            
+            // Auto-open the first IO tab by default if none is set
+            if (!currentActiveIOId) {
+                const firstBtn = document.querySelector('.io-tab-btn');
+                if (firstBtn) {
+                    const id = firstBtn.id.replace('btn-io-', '');
+                    setActiveIOContext(parseInt(id));
+                }
             }
         }
+    }
 
-        /**
-         * Cascade Interlock Filter Node: Matches Sub-IO dropdown selections explicitly to parent Immediate Outcomes
-         */
-        function filterSubOutcomesByMainIO(mainIoId) {
-            const subIoSelect = document.getElementById('effectiveness_sub_io_id');
-            const options = subIoSelect.querySelectorAll('.sub-io-option');
-            let matchedItemsCount = 0;
+    /**
+     * Swaps out the visible sub-IO checkboxes to match the selected Main IO tab
+     * CRITICAL: It leaves checkbox checkmarks untouched across other IO groups!
+     */
+    function setActiveIOContext(ioId) {
+        currentActiveIOId = ioId;
 
-            // Reset sub outcome choice completely if parent changes
-            subIoSelect.value = "";
+        // 1. Reset all tab buttons to neutral layout styles
+        document.querySelectorAll('.io-tab-btn').forEach(btn => {
+            btn.classList.remove('border-violet-600', 'bg-violet-50/40', 'ring-1', 'ring-violet-600/10');
+            btn.classList.add('border-slate-200', 'bg-white');
+        });
 
-            options.forEach(opt => {
-                const parentTrackId = opt.getAttribute('data-io');
-                if (parentTrackId === mainIoId) {
-                    opt.style.display = "block";
-                    matchedItemsCount++;
+        // 2. Highlight the active clicked tab button
+        const activeBtn = document.getElementById('btn-io-' + ioId);
+        if (activeBtn) {
+            activeBtn.classList.remove('border-slate-200', 'bg-white');
+            activeBtn.classList.add('border-violet-600', 'bg-violet-50/40', 'ring-1', 'ring-violet-600/10');
+        }
+
+        // 3. Show only sub-IOs that belong to this IO, hide the rest
+        document.querySelectorAll('.sub-io-wrapper').forEach(wrap => {
+            if (wrap.getAttribute('data-io') == ioId) {
+                wrap.classList.remove('hidden');
+            } else {
+                wrap.classList.add('hidden');
+            }
+        });
+    }
+
+    /**
+     * Recalculates checked item counts to show active counts directly on the IO tabs
+     */
+    function refreshIOTabSelectionCounters() {
+        document.querySelectorAll('.io-tab-btn').forEach(btn => {
+            const ioId = btn.id.replace('btn-io-', '');
+            const checkedCount = document.querySelectorAll(`input.sub-io-cb[data-parent-io="${ioId}"]:checked`).length;
+            const badge = document.getElementById('badge-io-' + ioId);
+
+            if (badge) {
+                if (checkedCount > 0) {
+                    badge.innerText = `${checkedCount} selected`;
+                    badge.classList.remove('hidden');
                 } else {
-                    opt.style.display = "none";
+                    badge.classList.add('hidden');
+                }
+            }
+        });
+    }
+
+    /**
+     * Toggle all visible checkboxes inside the actively viewed IO subset
+     */
+    function toggleActiveSubIOCbGroup() {
+        if (!currentActiveIOId) return;
+        const visibleCheckboxes = document.querySelectorAll(`.sub-io-wrapper:not(.hidden) input.sub-io-cb`);
+        if (visibleCheckboxes.length === 0) return;
+
+        const targetState = !visibleCheckboxes[0].checked;
+        visibleCheckboxes.forEach(cb => {
+            cb.checked = targetState;
+            updateCheckboxLabelHighlight(cb);
+        });
+
+        refreshIOTabSelectionCounters();
+    }
+
+    /**
+     * Master Toggle Helper for Institutions and Users distribution arrays
+     */
+    function toggleCheckboxGroup(className) {
+        const checkboxes = document.querySelectorAll('.' + className);
+        if (checkboxes.length === 0) return;
+        
+        const masterState = !checkboxes[0].checked;
+        checkboxes.forEach(cb => {
+            cb.checked = masterState;
+            updateCheckboxLabelHighlight(cb);
+        });
+    }
+
+    /**
+     * Flushes a checkbox collection cleanly
+     */
+    function resetCheckboxGroupStates(className) {
+        document.querySelectorAll('.' + className).forEach(cb => {
+            cb.checked = false;
+            updateCheckboxLabelHighlight(cb);
+        });
+        refreshIOTabSelectionCounters();
+    }
+
+    function resetActiveIOTabs() {
+        currentActiveIOId = null;
+        document.querySelectorAll('.io-tab-btn').forEach(btn => {
+            btn.classList.remove('border-violet-600', 'bg-violet-50/40', 'ring-1', 'ring-violet-600/10');
+            btn.classList.add('border-slate-200', 'bg-white');
+        });
+        document.querySelectorAll('.sub-io-wrapper').forEach(wrap => wrap.classList.add('hidden'));
+    }
+
+    /**
+     * Updates card styles when an item is selected
+     */
+    function updateCheckboxLabelHighlight(checkbox) {
+        const wrapperLabel = checkbox.closest('label');
+        if (!wrapperLabel) return;
+
+        const isTechnical = checkbox.classList.contains('tech-folder-cb') || checkbox.classList.contains('institution-cb') || checkbox.classList.contains('user-cb');
+        const highlightBg = isTechnical ? 'bg-blue-50/70' : 'bg-violet-50/70';
+        const highlightBorder = isTechnical ? 'border-blue-400' : 'border-violet-400';
+
+        if (checkbox.checked) {
+            wrapperLabel.classList.remove('bg-white', 'border-slate-200/60', 'border-slate-100');
+            wrapperLabel.classList.add(highlightBg, highlightBorder, 'ring-1', isTechnical ? 'ring-blue-100' : 'ring-violet-100');
+        } else {
+            wrapperLabel.classList.remove(highlightBg, highlightBorder, 'ring-1', 'ring-blue-100', 'ring-violet-100');
+            wrapperLabel.classList.add('bg-white', 'border-slate-200/60');
+        }
+    }
+
+  // Bind event listeners on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize active track visibility boundaries
+        const selectedTrack = document.querySelector('input[name="workspace_track"]:checked')?.value || 'technical';
+        switchWorkspaceContext(selectedTrack);
+
+        // Bind immediate change event listeners onto ALL checkboxes (folders, sub-IOs, institutions, users)
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            // Apply initial highlighting state instantly (Essential for 'old()' validation fallbacks)
+            updateCheckboxLabelHighlight(cb);
+
+            // Listen for user click interactions to toggle state highlights dynamically
+            cb.addEventListener('change', function() {
+                updateCheckboxLabelHighlight(this);
+                
+                // Recalculate side counters if it belongs to the effectiveness track
+                if (this.classList.contains('sub-io-cb')) {
+                    refreshIOTabSelectionCounters();
                 }
             });
-        }
-
-        /**
-         * Utility Multi-Tenant Helper: Instantly toggles entire collections of matching check-nodes
-         */
-        function toggleCheckboxGroup(className) {
-            const checkboxes = document.querySelectorAll('.' + className);
-            if (checkboxes.length === 0) return;
-            
-            // Base state decision string matching the state of the first item
-            const masterState = !checkboxes[0].checked;
-            checkboxes.forEach(cb => {
-                cb.checked = masterState;
-            });
-        }
-
-        // Initialize Workspace view state logic on initial rendering passes
-        document.addEventListener('DOMContentLoaded', function() {
-            const selectedTrack = document.querySelector('input[name="workspace_track"]:checked')?.value || 'technical';
-            switchWorkspaceContext(selectedTrack);
         });
-    </script>
+
+        // Run an initial count update pass for old values post-validation returns
+        refreshIOTabSelectionCounters();
+    });
+</script>
 </x-app-layout>
