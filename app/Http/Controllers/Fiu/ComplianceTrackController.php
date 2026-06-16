@@ -3,38 +3,37 @@
 namespace App\Http\Controllers\Fiu;
 
 use App\Http\Controllers\Controller;
-use App\Models\Institution;  //for finding the isntitutions//
+use App\Models\Institution;  
 use App\Models\TechnicalComplianceFolder;
-use Illuminate\Http\RedirectResponse;
+use App\Models\TechnicalComplianceDocument;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Illuminate\View\View;
+use Illuminate\Validation\Rule;
 
 class ComplianceTrackController extends Controller
 {
     /**
      * Route Alias for your web.php: [ComplianceTrackController::class, 'technicalIndex']
      */
-    public function technicalIndex(): View
+    public function technicalIndex()
     {
         return $this->index();
     }
 
-    
-public function index(): View
+    /**
+     * Display the main workspace directory folder index map
+     */
+    public function index()
     {
-        // Cleaned, isolated, and highly optimized for your split-view layout matrix
         $folders = TechnicalComplianceFolder::query()
-            ->where('compliance_track_id', 1) 
+            ->where('compliance_track_id', 1)
             ->with([
-                // 1. Load institutional tenant identification context
                 'institution' => fn($query) => $query->select('id', 'name'),
-                
-                // 2. 🌟 CRITICAL FIX: Eager-load real documents along with their audit trails!
                 'documents' => fn($query) => $query->with([
-                    'creator:id,name', // Loads the username of the person who uploaded it
-                    'updater:id,name'  // Loads the username of the last person who edited it
+                    'creator:id,name', 
+                    'updater:id,name'
                 ])
             ])
             ->withCount('documents as documents_count')
@@ -45,28 +44,22 @@ public function index(): View
     }
 
     /**
-     * Show the form for creating a new technical compliance folder.
+     * 📁 FOLDER REGISTRATION: Show the form for creating a new technical compliance folder.
      */
-public function create(): \Illuminate\View\View
+    public function create()
     {
-        // 1. Fetch the multi-tenant institutions from the database
-        $institutions = \App\Models\Institution::query()
+        $institutions = Institution::query()
             ->orderBy('name')
             ->get();
 
-        // 🌟 FIXED: Return the compiled View layout object passing the collection payload
         return view('fiu.tracks.TechnicalCompliance.folders.create', compact('institutions'));
     }
 
     /**
-     * Store a newly created technical compliance track in the database.
+     * 📁 FOLDER REGISTRATION: Store a newly created technical compliance folder row.
      */
-/**
-     * Store a newly created technical compliance folder.
-     */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request)
     {
-        // 1. Validate incoming parameters cleanly (accepting an array of institution IDs)
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
@@ -77,12 +70,11 @@ public function create(): \Illuminate\View\View
         $institutionIds = $validated['institution_ids'] ?? [];
 
         if (empty($institutionIds)) {
-            // Scenario A: No institutions selected -> Create a single Global Master Folder
             TechnicalComplianceFolder::create([
                 'name' => $validated['name'],
                 'description' => $validated['description'],
                 'compliance_track_id' => 1, 
-                'institution_id' => null, // Global context marker
+                'institution_id' => null, 
                 'created_by' => auth()->id(),
                 'is_active' => true,
                 'is_default' => false,
@@ -90,13 +82,12 @@ public function create(): \Illuminate\View\View
                 'sort_order' => 0,
             ]);
         } else {
-            // Scenario B: Checkboxes selected -> Create a dedicated folder row for each institution
             foreach ($institutionIds as $institutionId) {
                 TechnicalComplianceFolder::create([
                     'name' => $validated['name'],
                     'description' => $validated['description'],
                     'compliance_track_id' => 1, 
-                    'institution_id' => $institutionId, // Tied to specific tenant
+                    'institution_id' => $institutionId, 
                     'created_by' => auth()->id(),
                     'is_active' => true,
                     'is_default' => false,
@@ -106,21 +97,153 @@ public function create(): \Illuminate\View\View
             }
         }
 
-        //  Added the missing return statement to satisfy the RedirectResponse typehint!
         return redirect()
             ->route('fiu.technical-compliance.folders.index')
             ->with('success', 'Technical compliance folder structure saved successfully.');
     }
 
-public function show(int|string $track): View
+    /**
+     * 📑 CENTRALIZED DOCUMENT UPLOAD: Render the dual-workspace asset log form screen.
+     */
+    public function createDocument()
     {
-        // 1. Attempt to fetch track details using fallback bindings first
+        $techTrackId = DB::table('compliance_tracks')->where('slug', 'technical-compliance')->value('id') ?? 1;
+
+        $technicalFolders = TechnicalComplianceFolder::where('compliance_track_id', $techTrackId)->orderBy('name')->get();
+        $immediateOutcomes = DB::table('effectiveness_immediate_outcomes')->orderBy('code')->get();
+        $subOutcomes = DB::table('effectiveness_sub_immediate_outcomes')->orderBy('code')->get();
+        $institutions = Institution::orderBy('name')->get();
+        $users = User::orderBy('name')->get();
+
+        $documentStatuses = [
+            'submitted'         => 'Submitted',
+            'under-review'      => 'Under Review',
+            'changes-requested' => 'Changes Requested',
+            'approved'          => 'Approved',
+            'archived'          => 'Archived'
+        ];
+
+        return view('fiu.documents.create', compact(
+            'technicalFolders',
+            'immediateOutcomes',
+            'subOutcomes',
+            'institutions',
+            'users',
+            'documentStatuses'
+        ));
+    }
+
+    /**
+     * 📑 CENTRALIZED DOCUMENT UPLOAD: Parse parameters, ingest binary file flows, and dispatch records.
+     */
+    public function storeDocument(Request $request)
+    {
+        $validated = $request->validate([
+            'workspace_track'            => ['required', 'string', 'in:technical,effectiveness'],
+            'title'                      => ['required', 'string', 'max:255'],
+            'reporting_institution'      => ['required', 'string', 'max:255'],
+            'date_logged'                => ['required', 'date'],
+            'status'                     => ['required', 'string', Rule::in(['submitted', 'under-review', 'changes-requested', 'approved', 'archived'])],
+            'remarks'                    => ['nullable', 'string', 'max:4000'],
+            'document_file'              => ['required_without:external_file_path', 'nullable', 'file', 'max:51200'],
+            
+            'technical_folder_id'        => ['required_if:workspace_track,technical', 'nullable', 'integer', 'exists:folders,id'],
+            'immediate_outcome_id'       => ['required_if:workspace_track,effectiveness', 'nullable', 'integer', 'exists:immediate_outcomes,id'],
+            'effectiveness_sub_io_id'    => ['required_if:workspace_track,effectiveness', 'nullable', 'integer', 'exists:effectiveness_sub_ios,id'],
+            
+            'external_file_name'         => ['nullable', 'string', 'max:255'],
+            'external_file_path'         => ['nullable', 'string', 'max:255'],
+            
+            'target_institutions'        => ['nullable', 'array'],
+            'target_institutions.*'      => ['integer', 'exists:institutions,id'],
+            'target_users'               => ['nullable', 'array'],
+            'target_users.*'             => ['integer', 'exists:users,id'],
+        ]);
+
+        $finalPath = null;
+        $originalFilename = null;
+        $mimeType = 'application/octet-stream';
+
+        if ($request->hasFile('document_file')) {
+            $file = $request->file('document_file');
+            $originalFilename = $file->getClientOriginalName();
+            $mimeType = $file->getMimeType();
+            
+            $subPath = $validated['workspace_track'] === 'technical' ? 'technical-compliance' : 'effectiveness';
+            $finalPath = $file->store("documents/{$subPath}", 'private');
+        } else {
+            $finalPath = $request->input('external_file_path');
+            $originalFilename = $request->input('external_file_name') ?? basename($finalPath);
+        }
+
+        if ($validated['workspace_track'] === 'technical') {
+            $documentId = DB::table('technical_compliance_documents')->insertGetId([
+                'folder_id'         => $validated['technical_folder_id'],
+                'title'             => $validated['title'],
+                'description'       => $validated['remarks'] ?? null,
+                'stored_path'       => $finalPath,
+                'original_filename' => $originalFilename,
+                'mime_type'         => $mimeType,
+                'status'            => $validated['status'],
+                'uploaded_by'       => $request->user()?->id ?? auth()->id() ?? 1,
+                'submitted_at'      => $validated['date_logged'],
+                'created_at'        => now(),
+                'updated_at'        => now(),
+            ]);
+        } else {
+            $documentId = DB::table('effectiveness_documents')->insertGetId([
+                'immediate_outcome_id' => $validated['immediate_outcome_id'],
+                'sub_io_id'            => $validated['effectiveness_sub_io_id'],
+                'title'                => $validated['title'],
+                'description'          => $validated['remarks'] ?? null,
+                'stored_path'          => $finalPath,
+                'original_filename'    => $originalFilename,
+                'mime_type'            => $mimeType,
+                'status'               => $validated['status'],
+                'uploaded_by'          => $request->user()?->id ?? auth()->id() ?? 1,
+                'submitted_at'         => $validated['date_logged'],
+                'created_at'           => now(),
+                'updated_at'           => now(),
+            ]);
+        }
+
+        if (!empty($request->input('target_institutions'))) {
+            foreach ($request->input('target_institutions') as $instId) {
+                DB::table('document_institution_visibility')->insertOrIgnore([
+                    'workspace_track' => $validated['workspace_track'],
+                    'document_id'     => $documentId,
+                    'institution_id'  => $instId,
+                    'created_at'      => now(),
+                ]);
+            }
+        }
+
+        if (!empty($request->input('target_users'))) {
+            foreach ($request->input('target_users') as $usrId) {
+                DB::table('document_user_visibility')->insertOrIgnore([
+                    'workspace_track' => $validated['workspace_track'],
+                    'document_id'     => $documentId,
+                    'user_id'         => $usrId,
+                    'created_at'      => now(),
+                ]);
+            }
+        }
+
+        return redirect()
+            ->route('fiu.technical-compliance.folders.index')
+            ->with('success', 'Document asset ingested, processed and dispatched to multi-tenant targets successfully.');
+    }
+
+    /**
+     * Show detailed dashboards tracking individual folders or custom tracks dynamically
+     */
+    public function show($track)
+    {
         $trackData = DB::table('compliance_tracks')
             ->where('id', $track)
             ->orWhere('slug', $track)
-            ->first(); // 🌟 Changed from firstOrFail to first so it doesn't instantly crash if it's a folder slug instead!
-        
-        // 🔹 CONTEXT A: If a matching track was found, display the track's folder layout index grid
+            ->first();
+
         if ($trackData) {
             $viewPath = match ($trackData->slug) {
                 'technical-compliance' => 'fiu.tracks.TechnicalCompliance.folders.index',
@@ -128,7 +251,6 @@ public function show(int|string $track): View
                 default                 => 'fiu.tracks.show',
             };
 
-            // Fetch technical folders and group them cleanly
             $rawFolders = DB::table('folders')
                 ->leftJoin('technical_compliance_documents', 'folders.id', '=', 'technical_compliance_documents.folder_id')
                 ->select(
@@ -136,12 +258,11 @@ public function show(int|string $track): View
                     DB::raw('COUNT(technical_compliance_documents.id) as documents_count')
                 )
                 ->where('folders.compliance_track_id', $trackData->id)
-                ->whereNull('folders.parent_id') // Shows root level directories only
+                ->whereNull('folders.parent_id') 
                 ->groupBy('folders.id')
                 ->orderBy('folders.name')
                 ->get();
 
-            // Map over the folders array to inject default properties
             $folders = $rawFolders->map(function ($folder) {
                 $folder->institutions = collect([]); 
                 $folder->institutions_count = 0;
@@ -154,39 +275,33 @@ public function show(int|string $track): View
             ]);
         }
 
-        // 🔹 CONTEXT B: DRILL-DOWN SINGLE FOLDER VIEW
-        // If no track matched, it means a folder slug was passed! Look it up in the folders table.
         $folder = DB::table('folders')
             ->where('slug', $track)
-            ->firstOrFail(); // This WILL trigger a true 404 if the folder slug is totally invalid
+            ->firstOrFail();
 
-        // Pull any institution documents matching this folder's record container id
         $documents = DB::table('technical_compliance_documents')
             ->where('folder_id', $folder->id)
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Safely map standard structural properties onto your isolated folder object
         $folder->institutions = collect([]);
 
-        // Direct layout compilation to your subfolder path: views/fiu/tracks/TechnicalCompliance/folders/show.blade.php
         return view('fiu.tracks.TechnicalCompliance.folders.show', compact('folder', 'documents'));
     }
 
-    public function edit(int|string $track): View
+    public function edit($track)
     {
         $track = DB::table('compliance_tracks')->where('id', $track)->orWhere('slug', $track)->firstOrFail();
-
         return view('fiu.tracks.edit', compact('track'));
     }
 
-    public function update(Request $request, int|string $track): RedirectResponse
+    public function update(Request $request, $track)
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
         ]);
-
+        
         $validated['slug'] = Str::slug($validated['name']);
         $validated['updated_at'] = now();
 
@@ -195,18 +310,16 @@ public function show(int|string $track): View
         return redirect()->route('fiu.tracks.index')->with('success', 'Compliance track updated successfully.');
     }
 
-    public function destroy(int|string $track): RedirectResponse
+    public function destroy($track)
     {
-        // Keep tracking dependencies in mind—folders referencing this compliance_track_id may fail database constraints if deleted raw
         DB::table('compliance_tracks')->where('id', $track)->orWhere('slug', $track)->delete();
-
         return redirect()->route('fiu.tracks.index')->with('success', 'Compliance track removed successfully.');
     }
 
     /**
      * Action hook to securely store dynamic workspace folders generated by FIU staff
      */
-   public function storeTechnicalFolder(\Illuminate\Http\Request $request): \Illuminate\Http\RedirectResponse
+    public function storeTechnicalFolder(Request $request)
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -219,9 +332,9 @@ public function show(int|string $track): View
 
         DB::table('folders')->insert([
             'compliance_track_id' => $trackId,
-            'parent_id'           => null, // 🌟 FORCES it into the root category list
+            'parent_id'           => null, 
             'name'                => $validated['name'],
-            'slug'                => \Illuminate\Support\Str::slug($validated['name']),
+            'slug'                => Str::slug($validated['name']),
             'description'         => $validated['description'],
             'created_by'          => auth()->id(),
             'is_default'          => false,

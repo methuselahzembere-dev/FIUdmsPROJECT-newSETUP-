@@ -62,7 +62,7 @@ Route::middleware(['auth', 'role:fiu_admin,fiu_reviewer'])->prefix('fiu')->as('f
         return view('fiu.dashboard', compact('stats', 'recentSubmissions'));
     })->name('dashboard');
 
-    // 🌟 HIGH PRIORITY SPECIFIC TRACK GROUPS (Placed BEFORE resource wildcards)
+    //  HIGH PRIORITY SPECIFIC TRACK GROUPS (Placed BEFORE resource wildcards)
     
     // Effectiveness Tracks Routing
       Route::prefix('tracks/effectiveness')->name('effectiveness.folders')->group(function (): void {
@@ -109,7 +109,18 @@ Route::middleware(['auth', 'role:fiu_admin,fiu_reviewer'])->prefix('fiu')->as('f
 
     Route::get('archive', [FiuArchiveController::class, 'index'])->name('archive.index');
     Route::get('reports/compliance', [ComplianceReportController::class, 'index'])->name('reports.compliance');
+
+    
+    //  Folders Architecture Routing Nodes (Linked to your original methods)
+    Route::get('technical-compliance/folders/create', [ComplianceTrackController::class, 'create'])->name('technical-compliance.folders.create');
+    Route::post('technical-compliance/folders/store', [ComplianceTrackController::class, 'store'])->name('technical-compliance.folders.store');
+
+    //  Center Document Management Routing Matrix Nodes (Linked to the new operations)
+    Route::get('documents/create', [ComplianceTrackController::class, 'createDocument'])->name('documents.create');
+    Route::post('documents/store', [ComplianceTrackController::class, 'storeDocument'])->name('documents.store');
+    
 });
+
 
 
 // =========================================================================
