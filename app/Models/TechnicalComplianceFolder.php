@@ -42,6 +42,7 @@ class TechnicalComplianceFolder extends Model
         'parent_id',
         'created_by',
         'name',
+        'visibility_scope',
         'slug',
         'description',
         'is_default',

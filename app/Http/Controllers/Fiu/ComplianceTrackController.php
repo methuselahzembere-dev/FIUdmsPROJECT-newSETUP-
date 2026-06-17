@@ -25,10 +25,26 @@ class ComplianceTrackController extends Controller
     /**
      * Display the main workspace directory folder index map
      */
+  /**
+     * Display the main workspace directory folder index map
+     */
     public function index()
     {
-        $folders = TechnicalComplianceFolder::query()
+        $isFiuStaff = auth()->user()->is_fiu_staff ?? false; 
+        $userInstitutionId = auth()->user()->institution_id ?? null;
+
+        $folders = \App\Models\TechnicalComplianceFolder::query()
             ->where('compliance_track_id', 1)
+            ->where(function($query) use ($isFiuStaff, $userInstitutionId) {
+                if ($isFiuStaff) {
+                    // FIU staff see EVERYTHING (shared AND fiu-private folders)
+                    return $query;
+                }
+                
+                // External users can ONLY see shared folders tied to their own institution
+                return $query->where('visibility_scope', 'shared')
+                             ->where('institution_id', $userInstitutionId);
+            })
             ->with([
                 'institution' => fn($query) => $query->select('id', 'name'),
                 'documents' => fn($query) => $query->with([
@@ -55,7 +71,7 @@ class ComplianceTrackController extends Controller
         return view('fiu.tracks.TechnicalCompliance.folders.create', compact('institutions'));
     }
 
-    /**
+/**
      * 📁 FOLDER REGISTRATION: Store a newly created technical compliance folder row.
      */
     public function store(Request $request)
@@ -63,30 +79,41 @@ class ComplianceTrackController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
+            'visibility_scope' => ['required', 'string', 'in:shared,fiu-private'], // 🔒 Validate scope choice
             'institution_ids' => ['nullable', 'array'],
             'institution_ids.*' => ['exists:institutions,id'],
         ]);
 
         $institutionIds = $validated['institution_ids'] ?? [];
+        $scope = $validated['visibility_scope'];
+
+        // If marked confidential, force multi-tenant linkage maps to stay completely empty
+        if ($scope === 'fiu-private') {
+            $institutionIds = [];
+        }
 
         if (empty($institutionIds)) {
-            TechnicalComplianceFolder::create([
+            \App\Models\TechnicalComplianceFolder::create([
                 'name' => $validated['name'],
+                'slug' => Str::slug($validated['name']),
                 'description' => $validated['description'],
                 'compliance_track_id' => 1, 
+                'visibility_scope' => $scope, // 🌟 Save isolation level flag
                 'institution_id' => null, 
                 'created_by' => auth()->id(),
                 'is_active' => true,
                 'is_default' => false,
-                'is_visible_to_institutions' => true,
+                'is_visible_to_institutions' => ($scope === 'shared'), 
                 'sort_order' => 0,
             ]);
         } else {
             foreach ($institutionIds as $institutionId) {
-                TechnicalComplianceFolder::create([
+                \App\Models\TechnicalComplianceFolder::create([
                     'name' => $validated['name'],
+                    'slug' => Str::slug($validated['name']),
                     'description' => $validated['description'],
                     'compliance_track_id' => 1, 
+                    'visibility_scope' => 'shared', 
                     'institution_id' => $institutionId, 
                     'created_by' => auth()->id(),
                     'is_active' => true,
@@ -234,11 +261,15 @@ class ComplianceTrackController extends Controller
             ->with('success', 'Document asset ingested, processed and dispatched to multi-tenant targets successfully.');
     }
 
-    /**
+ 
+  /**
      * Show detailed dashboards tracking individual folders or custom tracks dynamically
      */
     public function show($track)
     {
+        $isFiuStaff = auth()->user()->is_fiu_staff ?? false;
+        $userInstitutionId = auth()->user()->institution_id ?? null;
+
         $trackData = DB::table('compliance_tracks')
             ->where('id', $track)
             ->orWhere('slug', $track)
@@ -259,6 +290,11 @@ class ComplianceTrackController extends Controller
                 )
                 ->where('folders.compliance_track_id', $trackData->id)
                 ->whereNull('folders.parent_id') 
+                ->where(function($query) use ($isFiuStaff, $userInstitutionId) {
+                    if ($isFiuStaff) return $query;
+                    return $query->where('visibility_scope', 'shared')
+                                 ->where('institution_id', $userInstitutionId);
+                })
                 ->groupBy('folders.id')
                 ->orderBy('folders.name')
                 ->get();
@@ -275,9 +311,15 @@ class ComplianceTrackController extends Controller
             ]);
         }
 
-        $folder = DB::table('folders')
+        // 🛡️ SUB-SECTION GATEKEEPER: Deep-diving a singular folder row via its slug string
+        $folder = \App\Models\TechnicalComplianceFolder::query()
             ->where('slug', $track)
-            ->firstOrFail();
+            ->where(function($query) use ($isFiuStaff, $userInstitutionId) {
+                if ($isFiuStaff) return $query;
+                return $query->where('visibility_scope', 'shared')
+                             ->where('institution_id', $userInstitutionId);
+            })
+            ->firstOrFail(); // 💥 Triggers standard clean 404 instantly if unauthorized!
 
         $documents = DB::table('technical_compliance_documents')
             ->where('folder_id', $folder->id)
