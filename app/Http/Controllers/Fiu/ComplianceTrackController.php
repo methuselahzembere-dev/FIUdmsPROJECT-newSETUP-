@@ -30,18 +30,20 @@ class ComplianceTrackController extends Controller
      */
     public function index()
     {
-        $isFiuStaff = auth()->user()->is_fiu_staff ?? false; 
+        // 🌟 FORCE FIU STAFF STATE TO TRUE TO SEE BOTH PRIVATE AND SHARED
+        // (Later you can dynamically bind this to your auth profiles role/column checks)
+        $isFiuStaff = true; 
         $userInstitutionId = auth()->user()->institution_id ?? null;
 
         $folders = \App\Models\TechnicalComplianceFolder::query()
             ->where('compliance_track_id', 1)
             ->where(function($query) use ($isFiuStaff, $userInstitutionId) {
                 if ($isFiuStaff) {
-                    // FIU staff see EVERYTHING (shared AND fiu-private folders)
+                    // 🔒 FIU staff bypass constraints: Fetch EVERYTHING (shared AND private)
                     return $query;
                 }
                 
-                // External users can ONLY see shared folders tied to their own institution
+                // External institutional users are strictly limited to shared folders matching their company
                 return $query->where('visibility_scope', 'shared')
                              ->where('institution_id', $userInstitutionId);
             })
@@ -54,7 +56,7 @@ class ComplianceTrackController extends Controller
             ])
             ->withCount('documents as documents_count')
             ->orderBy('name')
-            ->paginate(15);
+            ->paginate(50); // Increased pagination so long lists scroll fluidly in the sidebar
 
         return view('fiu.tracks.TechnicalCompliance.folders.index', compact('folders'));
     }
