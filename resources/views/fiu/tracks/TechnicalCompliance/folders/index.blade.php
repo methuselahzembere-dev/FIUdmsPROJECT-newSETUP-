@@ -25,15 +25,20 @@
             </div>
 
             <div class="p-2 border-b border-slate-100 bg-slate-50/50 shrink-0 grid grid-cols-2 gap-1.5">
-                <button type="button" onclick="switchSidebarScopeTab('shared')" id="scope-tab-shared"
-                        class="flex items-center justify-center gap-1.5 py-2 px-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all border cursor-pointer select-none border-blue-600 bg-blue-600 text-white shadow-xs">
-                    👥 Shared
-                </button>
-                <button type="button" onclick="switchSidebarScopeTab('fiu-private')" id="scope-tab-private"
-                        class="flex items-center justify-center gap-1.5 py-2 px-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all border cursor-pointer select-none border-slate-200 bg-white text-slate-500 hover:text-slate-700">
-                    🔒 Private
-                </button>
-            </div>
+    <button type="button" 
+            onclick="switchSidebarScopeTab('shared')" 
+            id="scope-tab-shared"
+            class="flex items-center justify-center gap-1.5 py-2 px-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all border cursor-pointer select-none border-blue-600 bg-blue-600 text-white shadow-xs">
+        👥 Shared
+    </button>
+    
+    <button type="button" 
+            onclick="switchSidebarScopeTab('fiu-private')" 
+            id="scope-tab-private"
+            class="flex items-center justify-center gap-1.5 py-2 px-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all border cursor-pointer select-none border-slate-200 bg-white text-slate-500 hover:text-slate-700">
+        🔒 Private
+    </button>
+</div>
 
             <div class="p-3 border-b border-slate-100 bg-white shrink-0">
                 <div class="relative">
@@ -51,44 +56,47 @@
                     />
                 </div>
             </div>
-<div id="sidebarFolderList" class="flex-1 overflow-y-auto max-h-[calc(100vh-18rem)] p-2 space-y-1 bg-slate-50/10">
-    @forelse($folders as $folder)
-        @php
-            $isPrivateFolder = ($folder->visibility_scope === 'fiu-private');
-        @endphp
-        <button 
-            id="btn-folder-{{ $folder->id }}"
-            data-folder-name="{{ strtolower($folder->name) }}"
-            data-folder-scope="{{ $folder->visibility_scope ?? 'shared' }}"
-            onclick="selectFolder('{{ $folder->id }}', '{{ addslashes($folder->name) }}', '{{ addslashes($folder->description ?: 'No description provided.') }}', '{{ $folder->is_active ? 'Active' : 'Archived' }}', '{{ $folder->creator?->name ?: 'System' }}', '{{ $folder->updater?->name ?: ($folder->creator?->name ?: 'System') }}', '{{ $folder->updated_at->format('M d, Y H:i') }}', '{{ $folder->visibility_scope }}')"
-            class="folder-nav-item w-full flex items-center justify-between p-3 rounded-2xl text-left hover:bg-slate-50 group transition-all duration-150 cursor-pointer border border-transparent"
-        >
-            <div class="flex items-center gap-2.5 min-w-0">
-                <svg class="h-5 w-5 shrink-0 group-hover:scale-105 transition-transform {{ $isPrivateFolder ? 'text-rose-600' : 'text-amber-500' }}" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
-                    @if($isPrivateFolder)
-                        <path d="M12 2a5 5 0 0 0-5 5v3H6a3 3 0 0 0-3 3v6a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3v-6a3 3 0 0 0-3-3h-1V7a5 5 0 0 0-5-5Zm3 8H9V7a3 3 0 0 1 6 0v3Z"/>
-                    @else
-                        <path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-1.5V9a3 3 0 0 0-3-3h-4.672a.75.75 0 0 1-.53-.22L8.53 4.53A2.25 2.25 0 0 0 6.94 3H4.5a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h15Z" />
-                    @endif
-                </svg>
-    <div class="truncate">
-    <span class="block text-sm font-bold text-slate-800 group-hover:text-blue-700 transition-colors truncate">
-        {{ $folder->name }}
-    </span>
-    
-    @if($isPrivateFolder)
-        <span class="inline-block mt-0.5 text-xxs font-black px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 uppercase border border-rose-100">
-            Confidential
-        </span>
-    @elseif($folder->institution)
-        <span class="inline-block mt-0.5 text-xxs font-extrabold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 uppercase border border-slate-200/50">
-            {{ $folder->institution->code }}
-        </span>
-    @else
-        <span class="inline-block mt-0.5 text-xxs font-extrabold px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-700 uppercase border border-violet-100">
-            Global
-        </span>
-    @endif </div>
+
+            <div id="sidebarFolderList" class="flex-1 overflow-y-auto max-h-[calc(100vh-18rem)] p-2 space-y-1 bg-slate-50/10">
+                @forelse($folders as $folder)
+                    @php
+                        $isPrivateFolder = ($folder->visibility_scope === 'fiu-private');
+                    @endphp
+                    <button 
+                        id="btn-folder-{{ $folder->id }}"
+                        data-folder-name="{{ strtolower($folder->name) }}"
+                        data-folder-scope="{{ $folder->visibility_scope ?? 'shared' }}"
+                        onclick="selectFolder('{{ $folder->id }}', '{{ addslashes($folder->name) }}', '{{ addslashes($folder->description ?: 'No description provided.') }}', '{{ $folder->is_active ? 'Active' : 'Archived' }}', '{{ $folder->creator?->name ?: 'System' }}', '{{ $folder->updater?->name ?: ($folder->creator?->name ?: 'System') }}', '{{ $folder->updated_at->format('M d, Y H:i') }}', '{{ $folder->visibility_scope }}')"
+                        class="folder-nav-item w-full flex items-center justify-between p-3 rounded-2xl text-left hover:bg-slate-50 group transition-all duration-150 cursor-pointer border border-transparent"
+                    >
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <svg class="h-5 w-5 shrink-0 group-hover:scale-105 transition-transform {{ $isPrivateFolder ? 'text-rose-600' : 'text-amber-500' }}" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                                @if($isPrivateFolder)
+                                    <path d="M12 2a5 5 0 0 0-5 5v3H6a3 3 0 0 0-3 3v6a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3v-6a3 3 0 0 0-3-3h-1V7a5 5 0 0 0-5-5Zm3 8H9V7a3 3 0 0 1 6 0v3Z"/>
+                                @else
+                                    <path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-1.5V9a3 3 0 0 0-3-3h-4.672a.75.75 0 0 1-.53-.22L8.53 4.53A2.25 2.25 0 0 0 6.94 3H4.5a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h15Z" />
+                                @endif
+                            </svg>
+                            <div class="truncate">
+                                <span class="block text-sm font-bold text-slate-800 group-hover:text-blue-700 transition-colors truncate">
+                                    {{ $folder->name }}
+                                </span>
+                                
+                                @if($isPrivateFolder)
+                                    <span class="inline-block mt-0.5 text-xxs font-black px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 uppercase border border-rose-100">
+                                        Confidential
+                                    </span>
+                                @elseif($folder->institution)
+                                    <span class="inline-block mt-0.5 text-xxs font-extrabold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 uppercase border border-slate-200/50">
+                                        {{ $folder->institution->code }}
+                                    </span>
+                                @else
+                                    <span class="inline-block mt-0.5 text-xxs font-extrabold px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-700 uppercase border border-violet-100">
+                                        Global
+                                    </span>
+                                @endif 
+                            </div>
+                        </div>
 
                         <span class="text-xs font-extrabold px-2 py-1 rounded-xl bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-700 transition-colors shrink-0 ml-1">
                             {{ $folder->documents_count }}
@@ -125,7 +133,7 @@
             </div>
 
             <div id="explorerWorkspace" class="hidden flex-1 flex flex-col min-w-0 transition-all duration-300">
-                
+       
                 <div id="activeHeaderPanel" class="p-5 border-b border-slate-100 shrink-0 bg-slate-50/60 rounded-t-3xl flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors duration-300">
                     <div class="min-w-0">
                         <h2 id="activeFolderName" class="text-lg font-black text-slate-900 tracking-tight truncate flex items-center gap-2"></h2>
@@ -227,61 +235,81 @@
 </div>
 
 <script>
-    let activeFolderId = null;
-    // 🌟 NEW STATE VARIABLE: Tracking current active scope view pane (Defaulting to shared track mapping)
+  let activeFolderId = null;
+    // Tracking current active scope view pane (Defaulting to shared track mapping)
     let currentActiveScope = 'shared';
 
     /**
-     * 🌟 NEW FEATURE: Filters folders within the active sidebar scope tab cleanly
+     * Filters folders within the active sidebar scope tab cleanly
      */
     function filterFolders() {
+        // Read the text filter query input string safely
         const query = document.getElementById('folderSearchInput').value.toLowerCase().trim();
+        
+        // Grab all rendered folder buttons inside the navigation pane
         const items = document.querySelectorAll('.folder-nav-item');
         let totalVisible = 0;
 
         items.forEach(item => {
-            const folderName = item.getAttribute('data-folder-name');
-            const folderScope = item.getAttribute('data-folder-scope');
+            const folderName = item.getAttribute('data-folder-name') || '';
             
-            // Check matching properties against both tab state AND lookup search values
-            if (folderScope === currentActiveScope && folderName.includes(query)) {
-                item.style.display = 'flex';
-                totalVisible++;
+            // 🌟 STEP 1: Grab the raw database scope string from the DOM attribute safely
+            let rawScope = (item.getAttribute('data-folder-scope') || 'shared').toLowerCase().trim();
+            
+            // 🌟 STEP 2: Normalize manual variations ('private') and seeds ('fiu-private') onto a clean single key
+            let normalizedFolderScope = (rawScope === 'fiu-private' || rawScope === 'private') ? 'fiu-private' : 'shared';
+            
+            // 🔒 STEP 3: Check if the normalized folder matches the active tab scope window ('shared' or 'fiu-private')
+            if (normalizedFolderScope === currentActiveScope) {
+                // If the scope matches, apply your search query text input check
+                if (query === '' || folderName.includes(query)) {
+                    // Force the layout display with high specificity overrides
+                    item.style.setProperty('display', 'flex', 'important');
+                    totalVisible++;
+                } else {
+                    // Hide if the search text doesn't match the current query string
+                    item.style.setProperty('display', 'none', 'important');
+                }
             } else {
-                item.style.display = 'none';
+                // 🛑 Hard lock exclusion rule: Hide completely if it belongs to the opposite tab scope context
+                item.style.setProperty('display', 'none', 'important');
             }
         });
 
+        // Toggle zero search state fallback nodes gracefully
         const fallback = document.getElementById('zeroSearchResults');
-        if (totalVisible === 0) {
-            fallback.classList.remove('hidden');
-        } else {
-            fallback.classList.add('hidden');
+        if (fallback) {
+            if (totalVisible === 0) {
+                fallback.classList.remove('hidden');
+            } else {
+                fallback.classList.add('hidden');
+            }
         }
     }
 
-    /**
-     * 🌟 NEW FEATURE: Swaps the visible collection layout inside the sidebar list dynamically
-     */
     function switchSidebarScopeTab(targetScope) {
+        // Ensure the global tracker accurately saves 'shared' or 'fiu-private'
         currentActiveScope = targetScope;
-        
         const sharedTab = document.getElementById('scope-tab-shared');
         const privateTab = document.getElementById('scope-tab-private');
 
-        // Swap tab navigation style states cleanly
+        // Swap tab navigation active highlight state classes cleanly
         if (targetScope === 'shared') {
             sharedTab.className = "flex items-center justify-center gap-1.5 py-2 px-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all border cursor-pointer select-none border-blue-600 bg-blue-600 text-white shadow-xs";
             privateTab.className = "flex items-center justify-center gap-1.5 py-2 px-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all border cursor-pointer select-none border-slate-200 bg-white text-slate-500 hover:text-slate-700";
         } else {
+            // Hard lock the focus to match 'fiu-private' parameters
             sharedTab.className = "flex items-center justify-center gap-1.5 py-2 px-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all border cursor-pointer select-none border-slate-200 bg-white text-slate-500 hover:text-slate-700";
             privateTab.className = "flex items-center justify-center gap-1.5 py-2 px-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all border cursor-pointer select-none border-red-600 bg-red-600 text-white shadow-xs";
         }
 
-        // Wipe old lookup input data strings clean on scope changeovers
-        document.getElementById('folderSearchInput').value = "";
+        // Wipe old lookup search input texts clean on scope tab changes
+        const searchInput = document.getElementById('folderSearchInput');
+        if (searchInput) {
+            searchInput.value = "";
+        }
         
-        // Refresh visible elements lists instantly
+        // Instantly re-run your filter matching checks!
         filterFolders();
     }
 
@@ -307,7 +335,6 @@
         document.querySelectorAll('.folder-nav-item').forEach(item => {
             item.classList.remove('bg-blue-50/80', 'border-blue-200/80', 'bg-rose-50/80', 'border-rose-200/80', 'shadow-sm');
         });
-        
         const currentBtn = document.getElementById('btn-folder-' + id);
         if (currentBtn) {
             if (scope === 'fiu-private') {
@@ -319,7 +346,6 @@
 
         document.getElementById('emptyViewPlaceholder').classList.add('hidden');
         document.getElementById('explorerWorkspace').classList.remove('hidden');
-
         document.getElementById('activeFolderName').innerText = name;
         document.getElementById('activeFolderDesc').innerText = description;
 
@@ -328,7 +354,7 @@
         document.getElementById('metaUpdatedBy').innerText = updatedBy;
         document.getElementById('metaUpdatedAt').innerText = 'at ' + updatedAt;
 
-        // 🌟 NEW FEATURE: Toggle active explorer workspace panel header styling dynamically 
+        // Toggle active explorer workspace panel header styling dynamically 
         const headerPanel = document.getElementById('activeHeaderPanel');
         if (scope === 'fiu-private') {
             headerPanel.className = "p-5 border-b border-rose-100 shrink-0 bg-rose-50/60 rounded-t-3xl flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors duration-300";
@@ -349,13 +375,13 @@
         document.querySelectorAll('.folder-group-' + id).forEach(row => {
             row.classList.remove('hidden');
         });
-
         activeFolderId = id;
     }
 
-    // 🌟 INITIALIZATION NODE PASS: Filter items safely on load
+    // INITIALIZATION NODE PASS: Filter items safely on load
     document.addEventListener('DOMContentLoaded', function() {
-        filterFolders();
+        // Force the layout state manager to mount the 'shared' scope by default on load
+        switchSidebarScopeTab('shared');
     });
 </script>
 
