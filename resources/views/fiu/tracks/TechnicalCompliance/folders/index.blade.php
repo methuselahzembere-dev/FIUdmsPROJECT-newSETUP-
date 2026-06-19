@@ -98,9 +98,9 @@
                             </div>
                         </div>
 
-                        <span class="text-xs font-extrabold px-2 py-1 rounded-xl bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-700 transition-colors shrink-0 ml-1">
-                            {{ $folder->documents_count }}
-                        </span>
+                     <span id="folder-count-badge-{{ $folder->id }}" class="text-xs font-extrabold px-2 py-1 rounded-xl bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-700 transition-colors shrink-0 ml-1">
+        {{ $folder->documents_count ?? 0 }}
+               </span>  
                     </button>
                 @empty
                     <div class="text-center py-8 text-xs text-slate-400 italic">No tracking directories initialized.</div>
@@ -330,7 +330,7 @@
         }
     }
 
-    // 🌟 UPDATED WITH PARAMETER: Accepts scope value to apply red or blue formatting to active elements
+    //  Accepts scope value to apply red or blue formatting to active elements
     function selectFolder(id, name, description, status, createdBy, updatedBy, updatedAt, scope) {
         document.querySelectorAll('.folder-nav-item').forEach(item => {
             item.classList.remove('bg-blue-50/80', 'border-blue-200/80', 'bg-rose-50/80', 'border-rose-200/80', 'shadow-sm');
@@ -383,6 +383,32 @@
         // Force the layout state manager to mount the 'shared' scope by default on load
         switchSidebarScopeTab('shared');
     });
+
+
+    /**
+ * Increments the document count badge for a specific compliance folder context in real time
+ */
+window.incrementFolderDocumentCount = function(folderId, incrementAmount = 1) {
+    const badge = document.getElementById(`folder-count-badge-${folderId}`);
+    if (!badge) return;
+
+    // 1. Read existing integer value safely
+    let currentCount = parseInt(badge.innerText.trim(), 10) || 0;
+    let newCount = currentCount + incrementAmount;
+
+    // 2. Write the new count metric cleanly
+    badge.innerText = newCount;
+
+    // 🌟 SENIOR MOVE: Apply attention-grabbing pulse animations so the user registers the dynamic change
+    badge.classList.remove('bg-slate-100', 'text-slate-500');
+    badge.classList.add('bg-blue-600', 'text-white', 'scale-110', 'transition-all', 'duration-300');
+
+    // 3. Settle the badge back down to standard layouts smoothly after 1.5 seconds
+    setTimeout(() => {
+        badge.classList.remove('bg-blue-600', 'text-white', 'scale-110');
+        badge.classList.add('bg-slate-100', 'text-slate-500');
+    }, 1500);
+};
 </script>
 
 </x-app-layout>

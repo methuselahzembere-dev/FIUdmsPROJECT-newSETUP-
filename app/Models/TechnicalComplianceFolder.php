@@ -12,7 +12,8 @@ use Illuminate\Support\Str;
 
 class TechnicalComplianceFolder extends Model
 {
-    use HasFactory, SoftDeletes; // SoftDeletes to match your migration's softDeletes() hook
+    use HasFactory, SoftDeletes; 
+    protected $guarded = [];
 
     /**
      *  FORCE TABLE ALIGNMENT
@@ -58,16 +59,17 @@ class TechnicalComplianceFolder extends Model
         'sort_order' => 'integer',
     ];
 
-    protected static function booted(): void
+protected static function booted(): void
     {
+        //  1. Wire up the multi-tenant isolation query guard matrix natively
+        static::addGlobalScope(new \App\Models\Scopes\TenantComplianceScope);
         static::creating(function (self $folder): void {
-            $folder->slug ??= Str::slug($folder->name);
+            $folder->slug ??= \Illuminate\Support\Str::slug($folder->name);
             
-            // 🌟 BACKSTOP FORCE-BIND: Automatically enforce sorting fallback if empty
+            // BACKSTOP FORCE-BIND: Automatically enforce sorting fallback if empty
             $folder->sort_order ??= 0;
         });
     }
-
     /**
      * Auditing trace tracking the staff member who spawned this folder node.
      */

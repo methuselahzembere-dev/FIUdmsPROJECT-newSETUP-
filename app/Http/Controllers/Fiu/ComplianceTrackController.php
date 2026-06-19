@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Fiu;
 
 use App\Http\Controllers\Controller;
+use App\Models\Scopes\TenantComplianceScope;
 use App\Models\Institution;  
 use App\Models\TechnicalComplianceFolder;
 use App\Models\TechnicalComplianceDocument;
@@ -76,7 +77,7 @@ class ComplianceTrackController extends Controller
 /**
      * 📁 FOLDER REGISTRATION: Store a newly created technical compliance folder row.
      */
-    public function store(Request $request)
+public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -86,49 +87,56 @@ class ComplianceTrackController extends Controller
             'institution_ids.*' => ['exists:institutions,id'],
         ]);
 
-        $institutionIds = $validated['institution_ids'] ?? [];
-        $scope = $validated['visibility_scope'];
+        // Wrap execution in a transaction block to prevent partial multi-tenant row replication states
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($validated) {
+            
+            $institutionIds = $validated['institution_ids'] ?? [];
+            $scope = $validated['visibility_scope'];
 
-        // If marked confidential, force multi-tenant linkage maps to stay completely empty
-        if ($scope === 'fiu-private') {
-            $institutionIds = [];
-        }
+            // 🔒 SECURITY GUARD: If marked confidential, wipe out multi-tenant assignment parameters
+            if ($scope === 'fiu-private') {
+                $institutionIds = [];
+            }
 
-        if (empty($institutionIds)) {
-            \App\Models\TechnicalComplianceFolder::create([
-                'name' => $validated['name'],
-                'slug' => Str::slug($validated['name']),
-                'description' => $validated['description'],
-                'compliance_track_id' => 1, 
-                'visibility_scope' => $scope, // 🌟 Save isolation level flag
-                'institution_id' => null, 
-                'created_by' => auth()->id(),
-                'is_active' => true,
-                'is_default' => false,
-                'is_visible_to_institutions' => ($scope === 'shared'), 
-                'sort_order' => 0,
-            ]);
-        } else {
-            foreach ($institutionIds as $institutionId) {
+            // Case A: Global Master Folder OR FIU Confidential Sandbox
+            if (empty($institutionIds)) {
                 \App\Models\TechnicalComplianceFolder::create([
                     'name' => $validated['name'],
-                    'slug' => Str::slug($validated['name']),
+                    'slug' => \Illuminate\Support\Str::slug($validated['name']), // Fully qualified to prevent missing import crashes
                     'description' => $validated['description'],
                     'compliance_track_id' => 1, 
-                    'visibility_scope' => 'shared', 
-                    'institution_id' => $institutionId, 
+                    'visibility_scope' => $scope, // 🌟 Save isolation level flag
+                    'institution_id' => null, 
                     'created_by' => auth()->id(),
                     'is_active' => true,
                     'is_default' => false,
-                    'is_visible_to_institutions' => true,
+                    'is_visible_to_institutions' => ($scope === 'shared'), 
                     'sort_order' => 0,
                 ]);
+            } 
+            // Case B: Replicated Multi-Tenant Institutional Tracks
+            else {
+                foreach ($institutionIds as $institutionId) {
+                    \App\Models\TechnicalComplianceFolder::create([
+                        'name' => $validated['name'],
+                        'slug' => \Illuminate\Support\Str::slug($validated['name']), 
+                        'description' => $validated['description'],
+                        'compliance_track_id' => 1, 
+                        'visibility_scope' => 'shared', 
+                        'institution_id' => $institutionId, 
+                        'created_by' => auth()->id(),
+                        'is_active' => true,
+                        'is_default' => false,
+                        'is_visible_to_institutions' => true,
+                        'sort_order' => 0,
+                    ]);
+                }
             }
-        }
 
-        return redirect()
-            ->route('fiu.technical-compliance.folders.index')
-            ->with('success', 'Technical compliance folder structure saved successfully.');
+            return redirect()
+                ->route('fiu.technical-compliance.folders.index')
+                ->with('success', 'Technical compliance folder structure saved successfully.');
+        });
     }
 
     /**
@@ -139,8 +147,9 @@ class ComplianceTrackController extends Controller
         $techTrackId = DB::table('compliance_tracks')->where('slug', 'technical-compliance')->value('id') ?? 1;
 
         $technicalFolders = TechnicalComplianceFolder::where('compliance_track_id', $techTrackId)->orderBy('name')->get();
-        $immediateOutcomes = DB::table('effectiveness_immediate_outcomes')->orderBy('code')->get();
-        $subOutcomes = DB::table('effectiveness_sub_immediate_outcomes')->orderBy('code')->get();
+// 🌟 FIXED: Use Eloquent models so Global Tenant Scopes and Admin bypass triggers execute perfectly
+    $immediateOutcomes = \App\Models\EffectivenessImmediateOutcome::orderBy('code')->get();
+    $subOutcomes = \App\Models\EffectivenessSubImmediateOutcome::orderBy('code')->get();
         $institutions = Institution::orderBy('name')->get();
         $users = User::orderBy('name')->get();
 

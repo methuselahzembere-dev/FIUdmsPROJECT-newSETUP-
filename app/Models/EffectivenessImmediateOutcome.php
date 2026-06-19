@@ -26,6 +26,13 @@ class EffectivenessImmediateOutcome extends Model
         'is_active' => 'boolean',
     ];
 
+
+    protected static function booted(): void
+    {
+        // Bind the tenant immediate outcome isolation scope natively
+        static::addGlobalScope(new \App\Models\Scopes\TenantImmediateOutcomeScope);
+    }
+
     public function subOutcomes(): HasMany
     {
         return $this->hasMany(EffectivenessSubImmediateOutcome::class, 'immediate_outcome_id')

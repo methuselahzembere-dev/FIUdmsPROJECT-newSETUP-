@@ -105,25 +105,25 @@
                                 Toggle All Folders
                             </button>
                         </div>
-        <div class="max-h-64 overflow-y-auto p-3 bg-slate-50/40 rounded-2xl border border-slate-200/60 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-    @foreach($technicalFolders ?? [] as $tFolder)
-        @php
-            // 🌟 Normalizing manual inputs ('private') and seeds ('fiu-private') safely for the document creator scope matching
-            $rawScope = strtolower(trim($tFolder->visibility_scope ?? 'shared'));
-            $folderScope = ($rawScope === 'fiu-private' || $rawScope === 'private') ? 'internal' : 'shared';
-        @endphp
-        
-        <label data-folder-scope="{{ $folderScope }}" class="tech-folder-wrapper form-folder-item flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200/60 shadow-2xs hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer select-none group">
-            <input type="checkbox" name="technical_folder_ids[]" value="{{ $tFolder->id }}" class="tech-folder-cb rounded border-slate-300 text-blue-600 focus:ring-blue-500 mt-0.5 h-4 w-4 transition-transform group-hover:scale-105" @checked(is_array(old('technical_folder_ids')) && in_array($tFolder->id, old('technical_folder_ids')))>
-            <div class="min-w-0 flex-1">
-                <span class="block text-xs font-bold text-slate-800 truncate group-hover:text-blue-900 transition-colors">{{ $tFolder->name }}</span>
-                @if($tFolder->description)
-                    <span class="block text-[10px] font-medium text-slate-400 line-clamp-1 mt-0.5 leading-tight">{{ $tFolder->description }}</span>
-                @endif
-            </div>
-        </label>
-    @endforeach
-</div>
+                        <div class="max-h-64 overflow-y-auto p-3 bg-slate-50/40 rounded-2xl border border-slate-200/60 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                            @foreach($technicalFolders ?? [] as $tFolder)
+                                @php
+                                    $rawScope = strtolower(trim($tFolder->visibility_scope ?? 'shared'));
+                                    $folderScope = ($rawScope === 'fiu-private' || $rawScope === 'private') ? 'internal' : 'shared';
+                                @endphp
+                                
+                                <label data-folder-scope="{{ $folderScope }}" class="tech-folder-wrapper form-folder-item flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200/60 shadow-2xs hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer select-none group">
+                                    <input type="checkbox" name="technical_folder_ids[]" value="{{ $tFolder->id }}" class="tech-folder-cb rounded border-slate-300 text-blue-600 focus:ring-blue-500 mt-0.5 h-4 w-4 transition-transform group-hover:scale-105" @checked(is_array(old('technical_folder_ids')) && in_array($tFolder->id, old('technical_folder_ids')))>
+                                    <div class="min-w-0 flex-1">
+                                        <span class="block text-xs font-bold text-slate-800 truncate group-hover:text-blue-900 transition-colors">{{ $tFolder->name }}</span>
+                                        @if($tFolder->description)
+                                            <span class="block text-[10px] font-medium text-slate-400 line-clamp-1 mt-0.5 leading-tight">{{ $tFolder->description }}</span>
+                                        @endif
+                                    </div>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
 
                     <div id="section-effectiveness-directories" class="hidden space-y-4">
                         <div class="space-y-2">
@@ -172,7 +172,7 @@
                                 <label id="doc-label-scope-shared" class="relative flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 select-none group border-slate-200 bg-white text-slate-700 shadow-2xs">
                                     <input type="radio" name="visibility_scope" value="shared" class="text-blue-600 focus:ring-blue-400 h-4 w-4 mt-0.5" onchange="handleDocumentScopeChange('shared')" @checked(old('visibility_scope', 'shared') === 'shared')>
                                     <div class="min-w-0 flex-1">
-                                        <span id="doc-title-scope-shared" class="block text-sm font-black text-slate-800 uppercase tracking-wide group-hover:text-blue-900 transition-colors">👥 Shared / Institutional Asset</span>
+                                        <span id="doc-title-scope-shared" class="block text-sm font-black text-slate-800 uppercase tracking-wide group-hover:text-blue-900 transition-colors">Shared / Institutional Asset</span>
                                         <span id="doc-desc-scope-shared" class="block text-xs font-medium text-slate-400 mt-1 leading-relaxed transition-colors">Visible to target institutions assigned down in the directory map panel matrix.</span>
                                     </div>
                                 </label>
@@ -180,7 +180,7 @@
                                 <label id="doc-label-scope-internal" class="relative flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 select-none group border-slate-200 bg-white text-slate-700 shadow-2xs">
                                     <input type="radio" name="visibility_scope" value="internal" class="text-red-600 focus:ring-red-400 h-4 w-4 mt-0.5" onchange="handleDocumentScopeChange('internal')" @checked(old('visibility_scope') === 'internal')>
                                     <div class="min-w-0 flex-1">
-                                        <span id="doc-title-scope-internal" class="block text-sm font-black text-slate-800 uppercase tracking-wide group-hover:text-red-600 transition-colors">🔒 Internal Audit Only (FIU Private)</span>
+                                        <span id="doc-title-scope-internal" class="block text-sm font-black text-slate-800 uppercase tracking-wide group-hover:text-red-600 transition-colors">Internal Audit Only (FIU Private)</span>
                                         <span id="doc-desc-scope-internal" class="block text-xs font-semibold text-slate-400 mt-1 leading-relaxed transition-colors">100% hidden from external visibility maps, regardless of destination directory targets.</span>
                                     </div>
                                 </label>
@@ -255,8 +255,8 @@
                             </button>
                         </div>
                     </div>
-
-                    <div id="wrapper-institutions-checkboxes" class="p-6 overflow-y-auto max-h-96 space-y-2 bg-slate-50/10 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                    
+                    <div id="wrapper-institutions-checkboxes" class="p-6 overflow-y-auto max-h-96 bg-slate-50/10 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                         @foreach($institutions ?? [] as $inst)
                             <label class="aside-cb-label flex items-start gap-3 p-3.5 rounded-xl bg-white border border-slate-200/60 shadow-2xs hover:bg-slate-50 transition-all cursor-pointer select-none group">
                                 <input type="checkbox" name="target_institutions[]" value="{{ $inst->id }}" class="institution-cb aside-target-cb rounded border-slate-300 text-blue-600 focus:ring-blue-500 mt-0.5 h-4 w-4">
@@ -268,24 +268,22 @@
                         @endforeach
                     </div>
 
-                    <div id="wrapper-fiu-users-checkboxes" class="hidden p-6 overflow-y-auto max-h-96 space-y-2 bg-slate-50/10 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                    <div id="wrapper-fiu-users-checkboxes" class="hidden p-6 overflow-y-auto max-h-96 bg-slate-50/10 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                         @foreach($fiuUsers ?? [] as $fUser)
                             <label class="aside-cb-label flex items-start gap-3 p-3.5 rounded-xl bg-white border border-slate-200/60 shadow-2xs hover:bg-slate-50 transition-all cursor-pointer select-none group">
                                 <input type="checkbox" name="target_users[]" value="{{ $fUser->id }}" class="fiu-user-cb aside-target-cb rounded border-slate-300 text-rose-600 focus:ring-rose-500 mt-0.5 h-4 w-4">
                                 <div class="min-w-0 flex-1">
                                     <span class="block text-xs font-bold text-slate-700 group-hover:text-rose-900 transition-colors truncate">{{ $fUser->name }}</span>
-                                    <span class="block text-[10px] font-medium text-slate-400 mt-0.5 truncate">{{ $fUser->email }}</span>
+                                    <span class="block text-[10px] font-medium text-slate-400 mt-0.5 tracking-wider uppercase">{{ $fUser->email }}</span>
                                 </div>
                             </label>
                         @endforeach
                     </div>
-                </div>
 
-                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-t border-slate-100 pt-5">
-                    <p class="text-xs text-slate-500 max-w-xl">This record links up with selected directories, updating analytics indices dynamically across the infrastructure.</p>
-                    <div class="flex gap-2">
-                        <a href="javascript:history.back()" class="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 px-5 text-xs font-black text-slate-700 transition hover:bg-slate-50 shadow-xs">Cancel</a>
-                        <button type="submit" id="submitButtonWidget" class="inline-flex h-11 items-center justify-center rounded-xl bg-blue-700 px-6 text-xs font-black text-white transition hover:bg-blue-800 shadow-sm cursor-pointer whitespace-nowrap">Save Document Asset</button>
+                    <div class="bg-slate-50/80 border-t border-slate-100 px-6 py-4 flex items-center justify-end">
+                        <button type="submit" id="submitButtonWidget" class="inline-flex h-11 items-center justify-center rounded-xl bg-blue-700 px-6 text-xs font-black text-white transition hover:bg-blue-800 shadow-sm cursor-pointer whitespace-nowrap uppercase tracking-wider">
+                            Save Document Record Node
+                        </button>
                     </div>
                 </div>
 
@@ -296,29 +294,97 @@
     <script>
         let currentActiveScope = 'shared';
 
-        function handleDocumentScopeChange(scope) {
+        function switchWorkspaceContext(track) {
+            const techLabel = document.getElementById('label-track-technical');
+            const effLabel = document.getElementById('label-track-effectiveness');
+            const techIcon = document.getElementById('icon-container-technical');
+            const effIcon = document.getElementById('icon-container-effectiveness');
 
-       // 🌟 STEP 1: INTERCEPT & ISOLATE THE TARGET COMPLIANCE FOLDERS IMMEDIATELY
-            const formFolders = document.querySelectorAll('.form-folder-item');
-            formFolders.forEach(folderCard => {
-                const fScope = folderCard.getAttribute('data-folder-scope');
+            const techSection = document.getElementById('section-technical-directories');
+            const effSection = document.getElementById('section-effectiveness-directories');
+            const submitBtn = document.getElementById('submitButtonWidget');
+
+            if (track === 'technical') {
+                techLabel.className = "relative flex flex-col p-5 rounded-2xl border-2 bg-white cursor-pointer hover:bg-slate-50/50 transition-all select-none group border-blue-600 ring-4 ring-blue-500/10";
+                effLabel.className = "relative flex flex-col p-5 rounded-2xl border-2 bg-white cursor-pointer hover:bg-slate-50/50 transition-all select-none group border-slate-200";
+                techIcon.className = "p-3 rounded-xl bg-blue-50 text-blue-700";
+                effIcon.className = "p-3 rounded-xl bg-slate-100 text-slate-600";
+
+                techSection.style.setProperty('display', 'block', 'important');
+                effSection.style.setProperty('display', 'none', 'important');
                 
-                if (fScope === scope) {
-                    // Show matching folder options natively
-                    folderCard.style.setProperty('display', 'flex', 'important');
-                } else {
-                    // Hide opposite options completely and reset their inputs to avoid dirty state submission mutations
-                    folderCard.style.setProperty('display', 'none', 'important');
-                    const cb = folderCard.querySelector('input[type="checkbox"]');
-                    if (cb) {
-                        cb.checked = false;
-                        updateCheckboxLabelHighlight(cb);
-                    }
+                if (currentActiveScope === 'shared') {
+                    submitBtn.className = "inline-flex h-11 items-center justify-center rounded-xl bg-blue-700 px-6 text-xs font-black text-white transition hover:bg-blue-800 shadow-sm cursor-pointer whitespace-nowrap uppercase tracking-wider";
                 }
+                
+                // Refresh folder visibility for technical track
+                const activeScope = document.querySelector('input[name="visibility_scope"]:checked')?.value || 'shared';
+                handleDocumentScopeChange(activeScope);
+            } else {
+                effLabel.className = "relative flex flex-col p-5 rounded-2xl border-2 bg-white cursor-pointer hover:bg-slate-50/50 transition-all select-none group border-violet-600 ring-4 ring-violet-500/10";
+                techLabel.className = "relative flex flex-col p-5 rounded-2xl border-2 bg-white cursor-pointer hover:bg-slate-50/50 transition-all select-none group border-slate-200";
+                effIcon.className = "p-3 rounded-xl bg-violet-50 text-violet-700";
+                techIcon.className = "p-3 rounded-xl bg-slate-100 text-slate-600";
+
+                techSection.style.setProperty('display', 'none', 'important');
+                effSection.style.setProperty('display', 'block', 'important');
+                
+                submitBtn.className = "inline-flex h-11 items-center justify-center rounded-xl bg-violet-700 px-6 text-xs font-black text-white transition hover:bg-violet-800 shadow-sm cursor-pointer whitespace-nowrap uppercase tracking-wider";
+                
+                // Ensure correct folder items are cleanly soft-hidden during effectiveness mode
+                document.querySelectorAll('.form-folder-item').forEach(el => el.style.setProperty('display', 'none', 'important'));
+
+                // Auto-select the first available IO tab if none are active
+                const activeIoBtn = document.querySelector('.io-tab-btn.bg-violet-600');
+                if (!activeIoBtn) {
+                    const firstBtn = document.querySelector('.io-tab-btn');
+                    if (firstBtn) firstBtn.click();
+                }
+            }
+        }
+
+        function setActiveIOContext(ioId) {
+            document.querySelectorAll('.io-tab-btn').forEach(btn => {
+                btn.className = "io-tab-btn flex flex-col items-center justify-center p-2.5 rounded-xl border-2 text-center transition-all cursor-pointer select-none bg-white border-slate-200 hover:bg-slate-50";
+                btn.querySelector('span').className = "text-xs font-black text-slate-900";
             });
 
+            const currentBtn = document.getElementById('btn-io-' + ioId);
+            if (currentBtn) {
+                currentBtn.className = "io-tab-btn flex flex-col items-center justify-center p-2.5 rounded-xl border-2 text-center transition-all cursor-pointer select-none bg-violet-600 border-violet-700 text-white shadow-xs scale-102";
+                currentBtn.querySelector('span').className = "text-xs font-black text-white";
+            }
 
+            document.querySelectorAll('.sub-io-wrapper').forEach(wrapper => {
+                if (parseInt(wrapper.getAttribute('data-io')) === ioId) {
+                    wrapper.classList.remove('hidden');
+                } else {
+                    wrapper.classList.add('hidden');
+                }
+            });
+        }
 
+        function handleDocumentScopeChange(scope) {
+            const currentTrack = document.querySelector('input[name="workspace_track"]:checked')?.value || 'technical';
+            currentActiveScope = scope;
+
+            // Only evaluate Technical compliance directories if track is technical
+            if (currentTrack === 'technical') {
+                const formFolders = document.querySelectorAll('.form-folder-item');
+                formFolders.forEach(folderCard => {
+                    const fScope = folderCard.getAttribute('data-folder-scope');
+                    if (fScope === scope) {
+                        folderCard.style.setProperty('display', 'flex', 'important');
+                    } else {
+                        folderCard.style.setProperty('display', 'none', 'important');
+                        const cb = folderCard.querySelector('input[type="checkbox"]');
+                        if (cb) {
+                            cb.checked = false;
+                            updateCheckboxLabelHighlight(cb);
+                        }
+                    }
+                });
+            }
 
             const sharedLabel = document.getElementById('doc-label-scope-shared');
             const internalLabel = document.getElementById('doc-label-scope-internal');
@@ -326,62 +392,97 @@
             const sharedDesc = document.getElementById('doc-desc-scope-shared');
             const internalTitle = document.getElementById('doc-title-scope-internal');
             const internalDesc = document.getElementById('doc-desc-scope-internal');
-
             const attributesCard = document.getElementById('documentAttributesCard');
             const submitBtn = document.getElementById('submitButtonWidget');
-
             const instWrapper = document.getElementById('wrapper-institutions-checkboxes');
             const userWrapper = document.getElementById('wrapper-fiu-users-checkboxes');
             const panelTitle = document.getElementById('aside-panel-title');
             const panelDesc = document.getElementById('aside-panel-desc');
 
             if (scope === 'shared') {
-                currentActiveScope = 'shared';
-                
                 sharedLabel.className = "relative flex items-start gap-4 p-5 rounded-2xl border-2 bg-blue-600/30 border-blue-600 text-blue-900 cursor-pointer transition-all duration-300 select-none group shadow-xs ring-4 ring-blue-500/10 animate-attention-breath";
                 sharedTitle.className = "block text-sm font-black text-blue-900 uppercase tracking-wide";
                 sharedDesc.className = "block text-xs font-semibold text-blue-700/80 mt-1 leading-relaxed";
-
                 internalLabel.className = "relative flex items-start gap-4 p-5 rounded-2xl border-2 bg-white border-slate-200 text-slate-700 cursor-pointer hover:bg-slate-50/50 transition-all duration-300 select-none group shadow-2xs";
                 internalTitle.className = "block text-sm font-black text-slate-800 uppercase tracking-wide group-hover:text-rose-700 transition-colors";
                 internalDesc.className = "block text-xs font-medium text-slate-400 mt-1 leading-relaxed";
-
-                attributesCard.className = "overflow-hidden rounded-3xl border border-blue-300 bg-blue-100 shadow-xs transition-all duration-500";
-                submitBtn.className = "inline-flex h-11 items-center justify-center rounded-xl bg-blue-700 px-6 text-xs font-black text-white transition hover:bg-blue-800 shadow-sm cursor-pointer whitespace-nowrap";
-
-                instWrapper.style.display = 'grid';
-                userWrapper.style.display = 'none';
-                userWrapper.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                    cb.checked = false;
-                    updateCheckboxLabelHighlight(cb);
-                });
-
-                panelTitle.innerText = "3. Target Institutions Access Mappings";
-                panelDesc.innerText = "Check one or more institutions to append this asset into their multi-tenant workspace matrix grids.";
+                
+                attributesCard.className = currentTrack === 'technical' 
+                    ? "overflow-hidden rounded-3xl border border-blue-300 bg-blue-100 shadow-xs transition-all duration-500"
+                    : "overflow-hidden rounded-3xl border border-violet-300 bg-violet-100 shadow-xs transition-all duration-500";
+                
+                submitBtn.className = currentTrack === 'technical'
+                    ? "inline-flex h-11 items-center justify-center rounded-xl bg-blue-700 px-6 text-xs font-black text-white transition hover:bg-blue-800 shadow-sm cursor-pointer whitespace-nowrap uppercase tracking-wider"
+                    : "inline-flex h-11 items-center justify-center rounded-xl bg-violet-700 px-6 text-xs font-black text-white transition hover:bg-violet-800 shadow-sm cursor-pointer whitespace-nowrap uppercase tracking-wider";
+                
+                instWrapper.style.setProperty('display', 'grid', 'important');
+                userWrapper.style.setProperty('display', 'none', 'important');
+                userWrapper.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; updateCheckboxLabelHighlight(cb); });
+                
+                panelTitle.innerText = "3. Assign Access Mappings";
+                panelDesc.innerText = "Determine visibility maps for this record execution node.";
             } else {
-                currentActiveScope = 'internal';
-
-                sharedLabel.className = "relative flex items-start gap-4 p-5 rounded-2xl border-2 bg-white border-slate-200 text-slate-700 cursor-pointer hover:bg-slate-50/50 transition-all duration-300 select-none group shadow-2xs";
-                sharedTitle.className = "block text-sm font-black text-slate-800 uppercase tracking-wide group-hover:text-blue-900 transition-colors";
-                sharedDesc.className = "block text-xs font-medium text-slate-400 mt-1 leading-relaxed";
-
                 internalLabel.className = "relative flex items-start gap-4 p-5 rounded-2xl border-2 bg-rose-600/30 border-rose-600 text-rose-900 cursor-pointer transition-all duration-300 select-none group shadow-xs ring-4 ring-rose-500/10 animate-attention-breath";
                 internalTitle.className = "block text-sm font-black text-rose-900 uppercase tracking-wide";
                 internalDesc.className = "block text-xs font-semibold text-rose-700/80 mt-1 leading-relaxed";
-
+                sharedLabel.className = "relative flex items-start gap-4 p-5 rounded-2xl border-2 bg-white border-slate-200 text-slate-700 cursor-pointer hover:bg-slate-50/50 transition-all duration-300 select-none group shadow-2xs";
+                sharedTitle.className = "block text-sm font-black text-slate-800 uppercase tracking-wide group-hover:text-blue-700 transition-colors";
+                sharedDesc.className = "block text-xs font-medium text-slate-400 mt-1 leading-relaxed";
+                
                 attributesCard.className = "overflow-hidden rounded-3xl border border-rose-300 bg-rose-100 shadow-xs transition-all duration-500";
-                submitBtn.className = "inline-flex h-11 items-center justify-center rounded-xl bg-rose-600 px-6 text-xs font-black text-white transition hover:bg-rose-700 shadow-sm cursor-pointer whitespace-nowrap";
-
-                instWrapper.style.display = 'none';
-                userWrapper.style.display = 'grid';
-                instWrapper.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                    cb.checked = false;
-                    updateCheckboxLabelHighlight(cb);
-                });
-
+                submitBtn.className = "inline-flex h-11 items-center justify-center rounded-xl bg-rose-700 px-6 text-xs font-black text-white transition hover:bg-rose-800 shadow-sm cursor-pointer whitespace-nowrap uppercase tracking-wider";
+                
+                instWrapper.style.setProperty('display', 'none', 'important');
+                userWrapper.style.setProperty('display', 'grid', 'important');
+                instWrapper.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; updateCheckboxLabelHighlight(cb); });
+                
                 panelTitle.innerText = "3. Target FIU Internal Auditor Access";
                 panelDesc.innerText = "Check internal protection officers authorized to inspect this sandboxed private execution node.";
             }
+        }
+
+        function updateCheckboxLabelHighlight(cb) {
+            const labelWrapper = cb.closest('.tech-folder-wrapper') || cb.closest('.sub-io-wrapper label') || cb.closest('.aside-cb-label');
+            if (!labelWrapper) return;
+
+            const isUser = cb.classList.contains('fiu-user-cb');
+            const isEff = cb.classList.contains('sub-io-cb');
+            
+            let highlightThemeClass = 'bg-blue-600/10';
+            let borderThemeClass = 'border-blue-500';
+            let ringThemeClass = 'ring-blue-100';
+
+            if (isUser) {
+                highlightThemeClass = 'bg-rose-600/10';
+                borderThemeClass = 'border-rose-500';
+                ringThemeClass = 'ring-rose-100';
+            } else if (isEff) {
+                highlightThemeClass = 'bg-violet-600/10';
+                borderThemeClass = 'border-violet-500';
+                ringThemeClass = 'ring-violet-100';
+            }
+
+            if (cb.checked) {
+                labelWrapper.classList.remove('bg-white', 'border-slate-200/60');
+                labelWrapper.classList.add(highlightThemeClass, borderThemeClass, 'ring-1', ringThemeClass);
+            } else {
+                labelWrapper.classList.remove(highlightThemeClass, borderThemeClass, 'ring-1', ringThemeClass);
+                labelWrapper.classList.add('bg-white', 'border-slate-200/60');
+            }
+        }
+
+        function toggleActiveSubIOCbGroup() {
+            const currentActiveIoBtn = document.querySelector('.io-tab-btn.bg-violet-600');
+            if (!currentActiveIoBtn) return;
+            const ioId = currentActiveIoBtn.id.match(/\d+/)[0];
+            const activeCheckboxes = document.querySelectorAll(`.sub-io-cb[data-parent-io="${ioId}"]`);
+            if (activeCheckboxes.length === 0) return;
+            const targetState = !activeCheckboxes[0].checked;
+            activeCheckboxes.forEach(cb => {
+                cb.checked = targetState;
+                updateCheckboxLabelHighlight(cb);
+            });
+            refreshIOTabSelectionCounters();
         }
 
         function toggleCheckboxGroup(checkboxClass) {
@@ -405,113 +506,24 @@
             });
         }
 
-        function updateCheckboxLabelHighlight(cb) {
-            const labelWrapper = cb.closest('.tech-folder-wrapper, .sub-io-wrapper label, .aside-cb-label');
-            if (!labelWrapper) return;
-
-            const isUser = cb.classList.contains('fiu-user-cb');
-            const highlightThemeClass = isUser ? 'bg-rose-600/10' : 'bg-blue-600/10';
-            const borderThemeClass = isUser ? 'border-rose-500' : 'border-blue-500';
-            const ringThemeClass = isUser ? 'ring-rose-100' : 'ring-blue-100';
-
-            if (cb.checked) {
-                labelWrapper.classList.remove('bg-white', 'border-slate-200/60');
-                labelWrapper.classList.add(highlightThemeClass, borderThemeClass, 'ring-1', ringThemeClass);
-            } else {
-                labelWrapper.classList.remove(highlightThemeClass, borderThemeClass, 'ring-1', ringThemeClass);
-                labelWrapper.classList.add('bg-white', 'border-slate-200/60');
-            }
-        }
-
-        function switchWorkspaceContext(track) {
-            const techLabel = document.getElementById('label-track-technical');
-            const effectLabel = document.getElementById('label-track-effectiveness');
-            const techIcon = document.getElementById('icon-container-technical');
-            const effectIcon = document.getElementById('icon-container-effectiveness');
-
-            const techSection = document.getElementById('section-technical-directories');
-            const effectSection = document.getElementById('section-effectiveness-directories');
-
-            if (track === 'technical') {
-                techLabel.className = "relative flex flex-col p-5 rounded-2xl border-2 bg-blue-50/40 cursor-pointer transition-all select-none group border-blue-600 ring-1 ring-blue-600/10 scale-101 shadow-xs";
-                techIcon.className = "p-3 rounded-xl bg-blue-600 text-white transition-transform";
-                effectLabel.className = "relative flex flex-col p-5 rounded-2xl border-2 bg-white cursor-pointer hover:bg-slate-50/50 transition-all select-none group border-slate-200";
-                effectIcon.className = "p-3 rounded-xl bg-slate-100 text-slate-600 transition-transform";
-
-                techSection.classList.remove('hidden');
-                effectSection.classList.add('hidden');
-            } else {
-                effectLabel.className = "relative flex flex-col p-5 rounded-2xl border-2 bg-violet-50/40 cursor-pointer transition-all select-none group border-violet-600 ring-1 ring-violet-600/10 scale-101 shadow-xs";
-                effectIcon.className = "p-3 rounded-xl bg-violet-600 text-white transition-transform";
-                techLabel.className = "relative flex flex-col p-5 rounded-2xl border-2 bg-white cursor-pointer hover:bg-slate-50/50 transition-all select-none group border-slate-200";
-                techIcon.className = "p-3 rounded-xl bg-blue-50 text-blue-700 transition-transform";
-
-                techSection.classList.add('hidden');
-                effectSection.classList.remove('hidden');
-                
-                const firstActiveIoButton = document.querySelector('.io-tab-btn');
-                if (firstActiveIoButton) {
-                    const match = firstActiveIoButton.id.match(/\d+/);
-                    if (match) setActiveIOContext(parseInt(match[0]));
-                }
-            }
-        }
-
-        function setActiveIOContext(ioId) {
-            document.querySelectorAll('.io-tab-btn').forEach(btn => {
-                btn.className = "io-tab-btn flex flex-col items-center justify-center p-2.5 rounded-xl border-2 text-center transition-all cursor-pointer select-none bg-white border-slate-200 hover:bg-slate-50";
-            });
-            
-            const currentBtn = document.getElementById('btn-io-' + ioId);
-            if (currentBtn) {
-                currentBtn.className = "io-tab-btn flex flex-col items-center justify-center p-2.5 rounded-xl border-2 text-center transition-all cursor-pointer select-none bg-violet-600 border-violet-700 text-white shadow-xs scale-102";
-                currentBtn.querySelector('span').className = "text-xs font-black text-white";
-            }
-
-            document.querySelectorAll('.sub-io-wrapper').forEach(wrapper => {
-                if (parseInt(wrapper.getAttribute('data-io')) === ioId) {
-                    wrapper.style.display = 'block';
-                } else {
-                    wrapper.style.display = 'none';
-                }
-            });
-        }
-
-        function toggleActiveSubIOCbGroup() {
-            const currentActiveIoBtn = document.querySelector('.io-tab-btn.bg-violet-600');
-            if (!currentActiveIoBtn) return;
-            const ioId = currentActiveIoBtn.id.match(/\d+/)[0];
-            const activeCheckboxes = document.querySelectorAll(`.sub-io-cb[data-parent-io="${ioId}"]`);
-            if (activeCheckboxes.length === 0) return;
-            const targetState = !activeCheckboxes[0].checked;
-            activeCheckboxes.forEach(cb => {
-                cb.checked = targetState;
-                updateCheckboxLabelHighlight(cb);
-            });
-            refreshIOTabSelectionCounters();
-        }
-
         function refreshIOTabSelectionCounters() {
             document.querySelectorAll('.io-tab-btn').forEach(btn => {
                 const ioId = btn.id.match(/\d+/)[0];
                 const checkedCount = document.querySelectorAll(`.sub-io-cb[data-parent-io="${ioId}"]:checked`).length;
                 const badge = document.getElementById('badge-io-' + ioId);
-                if (checkedCount > 0) {
-                    badge.innerText = `${checkedCount} chosen`;
-                    badge.classList.remove('hidden');
-                } else {
-                    badge.classList.add('hidden');
+                if (badge) {
+                    if (checkedCount > 0) {
+                        badge.innerText = `${checkedCount} chosen`;
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                    }
                 }
             });
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            const selectedTrack = document.querySelector('input[name="workspace_track"]:checked')?.value || 'technical';
-            switchWorkspaceContext(selectedTrack);
-
-            const selectedScope = document.querySelector('input[name="visibility_scope"]:checked')?.value || 'shared';
-            handleDocumentScopeChange(selectedScope);
-
+            // Apply checkbox highlights for old/session inputs natively on mount
             document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
                 updateCheckboxLabelHighlight(cb);
                 cb.addEventListener('change', function() {
@@ -521,6 +533,14 @@
                     }
                 });
             });
+
+            const selectedTrack = document.querySelector('input[name="workspace_track"]:checked')?.value || 'technical';
+            switchWorkspaceContext(selectedTrack);
+
+            const selectedScope = document.querySelector('input[name="visibility_scope"]:checked')?.value || 'shared';
+            handleDocumentScopeChange(selectedScope);
+            
+            refreshIOTabSelectionCounters();
         });
     </script>
 </x-app-layout>
