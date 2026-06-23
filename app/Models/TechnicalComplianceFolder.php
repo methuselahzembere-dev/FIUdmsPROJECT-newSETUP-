@@ -93,10 +93,7 @@ protected static function booted(): void
         return $this->hasMany(TechnicalComplianceDocument::class, 'folder_id');
     }
 
-    /**
-     * 🌟 MULTI-TENANT CONTEXT ISOLATION
-     * Connects this folder container directly to its designated owning institution.
-     */
+   
     public function institution(): BelongsTo
     {
         return $this->belongsTo(Institution::class, 'institution_id');
@@ -106,12 +103,19 @@ protected static function booted(): void
      * 🌟 BACKWARDS COMPATIBILITY BLADE WRAPPER
      * Keeps your index.blade.php from breaking if it calls the plural 'institutions' property.
      * Since a folder row has an individual 'institution_id', it maps cleanly to a singular relation.
-     */
-    public function institutions(): BelongsTo
+     */ 
+
+   public function institutions()
     {
-        return $this->belongsTo(Institution::class, 'institution_id');
+        return $this->belongsToMany(
+            \App\Models\Institution::class, 
+            'folder_institution_visibility', // The pivot table we just created
+            'folder_id',                     // The foreign key for the folder
+            'institution_id'                 // The foreign key for the institution
+        )->withTimestamps();                 // Automatically updates created_at/updated_at on the pivot!
     }
 
+    
     /**
      * Global Scope filter to drop inactive file nodes out of the working view trees.
      */

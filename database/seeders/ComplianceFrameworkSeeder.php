@@ -80,7 +80,7 @@ class ComplianceFrameworkSeeder extends Seeder
 
     protected function seedImmediateOutcomes(): void
     {
-        if (! Schema::hasTable('immediate_outcomes')) {
+        if (! Schema::hasTable('effectiveness_immediate_outcomes')) {
             $this->command?->warn('Skipping Immediate Outcomes because the immediate_outcomes table does not exist.');
             return;
         }
@@ -99,15 +99,21 @@ class ComplianceFrameworkSeeder extends Seeder
             11 => ['Proliferation Financing Sanctions', 'Persons and entities involved in proliferation of weapons of mass destruction are prevented from raising, moving, and using funds.'],
         ];
 
-        foreach ($outcomes as $number => [$title, $description]) {
-            DB::table('immediate_outcomes')->updateOrInsert(
-                ['number' => $number],
-                $this->onlyExistingColumns('immediate_outcomes', array_merge([
-                    'number' => $number,
-                    'title' => 'Immediate Outcome ' . $number . ': ' . $title,
-                    'description' => $description,
-                ], $this->nowColumns('immediate_outcomes')))
-            );
-        }
-    }
+foreach ($outcomes as $number => [$title, $description]) {
+    // We map 'number' to the 'code' column (e.g., "IO.1")
+    $code = 'IO.' . $number;
+
+    DB::table('effectiveness_immediate_outcomes')->updateOrInsert(
+        ['code' => $code], // Use 'code' as the unique key
+        array_merge([
+            'code'        => $code,
+            'number'      => $number,
+            'name'        => 'Immediate Outcome ' . $number . ': ' . $title,
+            'description' => $description,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ])
+    );
+}
+}
 }

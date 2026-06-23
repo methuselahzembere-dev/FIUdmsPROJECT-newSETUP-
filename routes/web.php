@@ -4,7 +4,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Fiu\ArchiveController as FiuArchiveController;
 use App\Http\Controllers\Fiu\ComplianceReportController;
 use App\Http\Controllers\Fiu\ComplianceTrackController;
-use App\Http\Controllers\Fiu\DocumentReviewController;
+use App\Http\Controllers\Fiu\DocumentReviewController; // 🌟 Restored this import
 use App\Http\Controllers\Fiu\FolderController as FiuFolderController;
 use App\Http\Controllers\Fiu\ImmediateOutcomeController as FiuImmediateOutcomeController;
 use App\Http\Controllers\Fiu\InstitutionController as FiuInstitutionController;
@@ -62,33 +62,20 @@ Route::middleware(['auth', 'role:fiu_admin,fiu_reviewer'])->prefix('fiu')->as('f
         return view('fiu.dashboard', compact('stats', 'recentSubmissions'));
     })->name('dashboard');
 
-    //  HIGH PRIORITY SPECIFIC TRACK GROUPS (Placed BEFORE resource wildcards)
-    
     // Effectiveness Tracks Routing
-      Route::prefix('tracks/effectiveness')->name('effectiveness.folders')->group(function (): void {
+    Route::prefix('tracks/effectiveness')->name('effectiveness.folders')->group(function (): void {
         Route::get('/', [EffectivenessFolderController::class, 'index'])->name('.index');
         Route::get('/{code}/documents/create', [EffectivenessFolderController::class, 'create'])->name('.documents.create');
         Route::post('/{code}/documents', [EffectivenessFolderController::class, 'store'])->name('.documents.store');
         Route::get('/{code}', [EffectivenessFolderController::class, 'show'])->name('.show');
     });
 
-  // =========================================================================
     // Technical Compliance Tracks Routing
-    // =========================================================================
     Route::prefix('tracks/technical-compliance')->name('technical-compliance.folders.')->group(function (): void {
-        
-        // Matches: GET /fiu/tracks/technical-compliance -> Name: fiu.technical-compliance.folders.index
         Route::get('/', [ComplianceTrackController::class, 'technicalIndex'])->name('index');
-        
-        // Matches: GET /fiu/tracks/technical-compliance/create -> Name: fiu.technical-compliance.folders.create
         Route::get('/create', [ComplianceTrackController::class, 'create'])->name('create');
-        
-        // Matches: POST /fiu/tracks/technical-compliance -> Name: fiu.technical-compliance.folders.store
         Route::post('/', [ComplianceTrackController::class, 'store'])->name('store');
-        
-        // Matches: GET /fiu/tracks/technical-compliance/{slug} -> Name: fiu.technical-compliance.folders.show
         Route::get('/{slug}', [ComplianceTrackController::class, 'show'])->name('show');
-        
     });
 
     // Fallback Layout for base track definitions
@@ -97,10 +84,18 @@ Route::middleware(['auth', 'role:fiu_admin,fiu_reviewer'])->prefix('fiu')->as('f
     // Shared Resource Maps
     Route::resource('institutions', FiuInstitutionController::class);
     Route::resource('users', FiuUserController::class);
-    Route::resource('tracks', ComplianceTrackController::class)->except(['show']); // Except handled above
+    Route::resource('tracks', ComplianceTrackController::class)->except(['show']);
     Route::resource('folders', FiuFolderController::class);
     Route::resource('outcomes', FiuImmediateOutcomeController::class);
-    Route::resource('documents', DocumentReviewController::class);
+    
+
+
+    // 🌟 FIXED: Cleaned names. Because of 'as(fiu.)', these automatically become 'fiu.documents.create' and 'fiu.documents.store'
+    Route::get('documents/create', [ComplianceTrackController::class, 'createDocument'])->name('documents.create');
+    Route::post('documents', [ComplianceTrackController::class, 'storeDocument'])->name('documents.store');
+
+        // 🌟 FIXED: We tell the resource to ignore create/store so our new controller handles them!
+    Route::resource('documents', DocumentReviewController::class)->except(['create', 'store']);
 
     // Shared Operational Controls
     Route::get('outcome-assignments', [OutcomeAssignmentController::class, 'index'])->name('outcomes.assignments.index');
@@ -110,18 +105,11 @@ Route::middleware(['auth', 'role:fiu_admin,fiu_reviewer'])->prefix('fiu')->as('f
     Route::get('archive', [FiuArchiveController::class, 'index'])->name('archive.index');
     Route::get('reports/compliance', [ComplianceReportController::class, 'index'])->name('reports.compliance');
 
-    
-    //  Folders Architecture Routing Nodes (Linked to your original methods)
+    // Folders Architecture Routing Nodes
     Route::get('technical-compliance/folders/create', [ComplianceTrackController::class, 'create'])->name('technical-compliance.folders.create');
     Route::post('technical-compliance/folders/store', [ComplianceTrackController::class, 'store'])->name('technical-compliance.folders.store');
-
-    //  Center Document Management Routing Matrix Nodes (Linked to the new operations)
-    Route::get('documents/create', [ComplianceTrackController::class, 'createDocument'])->name('documents.create');
-    Route::post('documents/store', [ComplianceTrackController::class, 'storeDocument'])->name('documents.store');
     
 });
-
-
 
 // =========================================================================
 // 🏦 4. REPORTING INSTITUTIONS DOMAIN (ZIMRA, ZRP, JSC)
@@ -163,7 +151,6 @@ Route::middleware(['auth', 'role:institution_representative'])->prefix('institut
     Route::get('feedback', [FeedbackController::class, 'index'])->name('feedback.index');
     Route::get('archive', [InstitutionArchiveController::class, 'index'])->name('archive.index');
 });
-
 
 // =========================================================================
 // 👤 5. STANDARD USER ACCOUNT PROFILE MANAGEMENT ROUTING

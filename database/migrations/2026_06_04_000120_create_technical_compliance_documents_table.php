@@ -11,16 +11,11 @@ return new class extends Migration {
             $table->id();
             
             // 🌟 FIXED: Point to unified 'folders' table and specify short custom constraint name to prevent length errors
-            $table->foreignId('folder_id')
-                  ->constrained('folders')
-                  ->cascadeOnDelete()
+            $table->foreignId('folder_id')->constrained('folders')->cascadeOnDelete()
                   ->name('tc_docs_folder_id_fk');
 
-            // 🌟 FIXED: Links to your multi-tenant institutions table
-            $table->foreignId('institution_id')
-                  ->constrained('institutions')
-                  ->cascadeOnDelete()
-                  ->name('tc_docs_institution_id_fk');
+            //  Links to your multi-tenant institutions table
+            $table->foreignId('institution_id')->nullable()->constrained('institutions')->cascadeOnDelete()->name('tc_docs_institution_id_fk');
 
             // Auditing & Review Tracking Context Nodes
             $table->foreignId('uploaded_by')->constrained('users')->cascadeOnDelete();

@@ -11,6 +11,7 @@ return new class extends Migration
         Schema::create('effectiveness_immediate_outcomes', function (Blueprint $table): void {
             $table->id();
             $table->string('code', 20)->unique();
+            $table->string('name');
             $table->unsignedTinyInteger('number')->unique();
             $table->string('title')->nullable();
             $table->text('description')->nullable();
@@ -29,6 +30,7 @@ return new class extends Migration
             $table->string('code', 20)->unique();
             $table->unsignedTinyInteger('main_number');
             $table->unsignedTinyInteger('sub_number');
+            $table->string('name');
             $table->string('title')->nullable();
             $table->text('description')->nullable();
             $table->unsignedSmallInteger('sort_order')->default(0);

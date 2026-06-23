@@ -12,33 +12,58 @@ use Illuminate\View\View;
 
 class DocumentReviewController extends Controller
 {
-    public function index(Request $request): View
+public function index(Request $request): View
     {
-        $documents = DB::table('documents')
-            ->leftJoin('institutions', 'documents.institution_id', '=', 'institutions.id')
-            ->leftJoin('folders', 'documents.folder_id', '=', 'folders.id')
-            ->select('documents.*', 'institutions.name as institution_name', 'folders.name as folder_name')
-            ->when($request->string('status')->toString(), fn ($query, $status) => $query->where('documents.status', $status))
-            ->when($request->string('q')->toString(), function ($query, string $search) {
-                $query->where(function ($query) use ($search) {
-                    $query->where('documents.title', 'like', "%{$search}%")
-                        ->orWhere('institutions.name', 'like', "%{$search}%")
-                        ->orWhere('folders.name', 'like', "%{$search}%");
+        // 🌟 Eloquent 'with()' eager loads the relationships, eliminating duplicates!
+        $documents = \App\Models\Document::with(['folder', 'institutions'])
+            // Filter by Status
+            ->when($request->filled('status'), function ($query) use ($request) {
+                $query->where('status', $request->status);
+            })
+            // Filter by Search Query
+            ->when($request->filled('q'), function ($query) use ($request) {
+                $search = $request->q;
+                
+                $query->where(function ($subQuery) use ($search) {
+                    // 1. Search the document title
+                    $subQuery->where('title', 'like', "%{$search}%")
+                        
+                        // 2. Search dynamically inside the attached institutions
+                        ->orWhereHas('institutions', function ($instQuery) use ($search) {
+                            $instQuery->where('name', 'like', "%{$search}%");
+                        })
+                        
+                        // 3. Search dynamically inside the attached folder
+                        ->orWhereHas('folder', function ($folderQuery) use ($search) {
+                            $folderQuery->where('name', 'like', "%{$search}%");
+                        });
                 });
             })
-            ->latest('documents.updated_at')
+            ->latest('updated_at')
             ->paginate(15);
 
         return view('fiu.documents.index', compact('documents'));
     }
 
-    public function create(): View
-    {
-        $institutions = DB::table('institutions')->orderBy('name')->get();
-        $folders = DB::table('folders')->orderBy('name')->get();
+public function create(): View
+{
+    // Fetch all required data
+    $institutions = \App\Models\Institution::orderBy('name')->get();
+    $technicalFolders = \App\Models\TechnicalComplianceFolder::orderBy('name')->get(); // Matching Blade's variable
+    $immediateOutcomes = \App\Models\EffectivenessImmediateOutcome::all();
+    $subOutcomes = \App\Models\EffectivenessSubImmediateOutcome::all();
+    
+    // Specifically fetch FIU users (assuming a 'role' column exists)
+    $fiuUsers = \App\Models\User::where('role', 'fiu_reviewer')->get(); 
 
-        return view('fiu.documents.create', compact('institutions', 'folders'));
-    }
+    return view('fiu.documents.create', compact(
+        'institutions', 
+        'technicalFolders', 
+        'immediateOutcomes', 
+        'subOutcomes', 
+        'fiuUsers'
+    ));
+}
 
     public function store(Request $request): RedirectResponse
     {
