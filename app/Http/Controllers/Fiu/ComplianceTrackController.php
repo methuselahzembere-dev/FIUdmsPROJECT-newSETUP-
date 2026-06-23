@@ -161,200 +161,139 @@ public function store(Request $request)
      * 📑 CENTRALIZED DOCUMENT UPLOAD: Parse parameters, ingest binary file flows, and dispatch records.
      */
 
-    public function storeDocument(Request $request)
-    {
-        // 1. 🌟 FIXED: Validation updated to match the HTML checkbox array names exactly
-        $validated = $request->validate([
-            'workspace_track'            => ['required', 'string', 'in:technical,effectiveness'],
-            'title'                      => ['required', 'string', 'max:255'],
-            'reporting_institution'      => ['required', 'string', 'max:255'],
-            'date_logged'                => ['required', 'date'],
-            'status'                     => ['required', 'string', Rule::in(['submitted', 'under-review', 'changes-requested', 'approved', 'archived'])],
-            'remarks'                    => ['nullable', 'string', 'max:4000'],
-            'document_file'              => ['required_without:external_file_path', 'nullable', 'file', 'max:51200'],
-            
-            // Array validation for multiple folders
-            'technical_folder_ids'       => ['required_if:workspace_track,technical', 'nullable', 'array'],
-            'technical_folder_ids.*'     => ['integer'], 
-            
-            // Array validation for multiple Sub-IOs
-            'effectiveness_sub_io_ids'   => ['required_if:workspace_track,effectiveness', 'nullable', 'array'],
-            'effectiveness_sub_io_ids.*' => ['integer'],
-            
-            'external_file_name'         => ['nullable', 'string', 'max:255'],
-            'external_file_path'         => ['nullable', 'string', 'max:255'],
-            
-            'target_institutions'        => ['nullable', 'array'],
-            'target_institutions.*'      => ['integer'],
-            'target_users'               => ['nullable', 'array'],
-            'target_users.*'             => ['integer'],
-        ]);
+public function storeDocument(Request $request)
+{
+    // 1. Validation (Unchanged - Matches your HTML perfectly)
+    $validated = $request->validate([
+        'workspace_track'            => ['required', 'string', 'in:technical,effectiveness'],
+        'title'                      => ['required', 'string', 'max:255'],
+        'reporting_institution'      => ['required', 'string', 'max:255'],
+        'date_logged'                => ['required', 'date'],
+        'status'                     => ['required', 'string', \Illuminate\Validation\Rule::in(['submitted', 'under-review', 'changes-requested', 'approved', 'archived'])],
+        'remarks'                    => ['nullable', 'string', 'max:4000'],
+        'document_file'              => ['required_without:external_file_path', 'nullable', 'file', 'max:51200'],
+        'technical_folder_ids'       => ['required_if:workspace_track,technical', 'nullable', 'array'],
+        'technical_folder_ids.*'     => ['integer'], 
+        'effectiveness_sub_io_ids'   => ['required_if:workspace_track,effectiveness', 'nullable', 'array'],
+        'effectiveness_sub_io_ids.*' => ['integer'],
+        'external_file_name'         => ['nullable', 'string', 'max:255'],
+        'external_file_path'         => ['nullable', 'string', 'max:255'],
+        'target_institutions'        => ['nullable', 'array'],
+        'target_institutions.*'      => ['integer'],
+        'target_users'               => ['nullable', 'array'],
+        'target_users.*'             => ['integer'],
+    ]);
 
-        // 2. Process File Upload (Unchanged)
-        $finalPath = null;
-        $originalFilename = null;
-        $mimeType = 'application/octet-stream';
+    // 2. Process File Upload (Unchanged)
+    $finalPath = null;
+    $originalFilename = null;
+    $mimeType = 'application/octet-stream';
 
-        if ($request->hasFile('document_file')) {
-            $file = $request->file('document_file');
-            $originalFilename = $file->getClientOriginalName();
-            $mimeType = $file->getMimeType();
-            
-            $subPath = $validated['workspace_track'] === 'technical' ? 'technical-compliance' : 'effectiveness';
-            $finalPath = $file->store("documents/{$subPath}", 'private');
-        } else {
-            $finalPath = $request->input('external_file_path');
-            $originalFilename = $request->input('external_file_name') ?? basename($finalPath);
-        }
-
-        $documentIds = []; // Track all inserted document IDs to assign visibility later
-
-        // 3. 🌟 FIXED: Loop to insert records for EVERY selected folder or IO checkbox
-        if ($validated['workspace_track'] === 'technical') {
-            $folderIds = $request->input('technical_folder_ids', []);
-            
-            foreach ($folderIds as $folderId) {
-                $documentIds[] = DB::table('technical_compliance_documents')->insertGetId([
-                    'folder_id'         => $folderId,
-                    'title'             => $validated['title'],
-                    'description'       => $validated['remarks'] ?? null,
-                    'stored_path'       => $finalPath,
-                    'original_filename' => $originalFilename,
-                    'mime_type'         => $mimeType,
-                    'status'            => $validated['status'],
-                    'uploaded_by'       => $request->user()?->id ?? auth()->id() ?? 1,
-                    'submitted_at'      => $validated['date_logged'],
-                    'created_at'        => now(),
-                    'updated_at'        => now(),
-                ]);
-            }
-        } else {
-            $subIoIds = $request->input('effectiveness_sub_io_ids', []);
-            
-            foreach ($subIoIds as $subIoId) {
-                // Fetch parent IO dynamically based on the Sub-IO selected
-                $parentIoId = DB::table('effectiveness_sub_immediate_outcomes')
-                                ->where('id', $subIoId)
-                                ->value('immediate_outcome_id') ?? 1;
-
-                $documentIds[] = DB::table('effectiveness_documents')->insertGetId([
-                    'immediate_outcome_id' => $parentIoId,
-                    'sub_io_id'            => $subIoId,
-                    'title'                => $validated['title'],
-                    'description'          => $validated['remarks'] ?? null,
-                    'stored_path'          => $finalPath,
-                    'original_filename'    => $originalFilename,
-                    'mime_type'            => $mimeType,
-                    'status'               => $validated['status'],
-                    'uploaded_by'          => $request->user()?->id ?? auth()->id() ?? 1,
-                    'submitted_at'         => $validated['date_logged'],
-                    'created_at'           => now(),
-                    'updated_at'           => now(),
-                ]);
-            }
-        }
-
-        // 4. 🌟 FIXED: Loop through visibility targets for ALL created document nodes
-        if (!empty($request->input('target_institutions'))) {
-            foreach ($documentIds as $docId) {
-                foreach ($request->input('target_institutions') as $instId) {
-                    DB::table('document_institution_visibility')->insertOrIgnore([
-                        'workspace_track' => $validated['workspace_track'],
-                        'document_id'     => $docId,
-                        'institution_id'  => $instId,
-                        'created_at'      => now(),
-                    ]);
-                }
-            }
-        }
-
-        if (!empty($request->input('target_users'))) {
-            foreach ($documentIds as $docId) {
-                foreach ($request->input('target_users') as $usrId) {
-                    DB::table('document_user_visibility')->insertOrIgnore([
-                        'workspace_track' => $validated['workspace_track'],
-                        'document_id'     => $docId,
-                        'user_id'         => $usrId,
-                        'created_at'      => now(),
-                    ]);
-                }
-            }
-        }
-
-        return redirect()
-            ->route('fiu.technical-compliance.folders.index')
-            ->with('success', 'Document asset ingested, processed and dispatched to multi-tenant targets successfully.');
+    if ($request->hasFile('document_file')) {
+        $file = $request->file('document_file');
+        $originalFilename = $file->getClientOriginalName();
+        $mimeType = $file->getMimeType();
+        
+        $subPath = $validated['workspace_track'] === 'technical' ? 'technical-compliance' : 'effectiveness';
+        $finalPath = $file->store("documents/{$subPath}", 'private');
+    } else {
+        $finalPath = $request->input('external_file_path');
+        $originalFilename = $request->input('external_file_name') ?? basename($finalPath);
     }
+
+    // 🌟 SENIOR REFACTOR: Wrap DB operations in a transaction for data safety
+    return \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $request, $finalPath, $originalFilename, $mimeType) {
+        
+        // 3. Create the SINGLE Master Document
+     $document = \App\Models\Document::create([
+            'workspace_track'       => $validated['workspace_track'],
+            'visibility_scope'      => $validated['visibility_scope'] ?? 'shared', 
+            'title'                 => $validated['title'],
+            'reporting_institution' => $validated['reporting_institution'],
+            'date_logged'           => $validated['date_logged'],
+            'status'                => $validated['status'],
+            'remarks'               => $validated['remarks'] ?? null,
+            'file_path'             => $finalPath,
+            
+            // 🌟 FIXED: Mapped to the exact column names from your migration!
+            'external_file_name'    => $originalFilename, 
+            'user_id'               => $request->user()?->id ?? auth()->id() ?? 1,
+        ]);
+        // 4. CLASSIFICATION PILLAR: Where is it filed? (No foreach loops needed!)
+        if ($validated['workspace_track'] === 'technical' && !empty($validated['technical_folder_ids'])) {
+            // Maps to `document_technical_folder` table
+            $document->technicalFolders()->sync($validated['technical_folder_ids']);
+        } elseif ($validated['workspace_track'] === 'effectiveness' && !empty($validated['effectiveness_sub_io_ids'])) {
+            // Maps to `document_sub_io` table
+            $document->subImmediateOutcomes()->sync($validated['effectiveness_sub_io_ids']);
+        }
+
+       // 5. PERMISSION PILLAR: Who is allowed to see it?
+        if (!empty($validated['target_institutions'])) {
+            //  Build an array mapping each Institution ID to the Workspace Track
+            $institutionSyncData = [];
+            foreach ($validated['target_institutions'] as $instId) {
+                $institutionSyncData[$instId] = ['workspace_track' => $validated['workspace_track']];
+            }
+            // Sync with the extra pivot data!
+            $document->institutions()->sync($institutionSyncData);
+        }
+
+      if (!empty($validated['target_users'])) {
+            $document->users()->sync($validated['target_users']);
+        }
+
+        // 6. REDIRECT
+        if ($validated['workspace_track'] === 'effectiveness') {
+            
+            // Optional: Figure out exactly which Parent IOs were just updated
+            // so we can highlight them on the index page!
+            $parentIoIds = \Illuminate\Support\Facades\DB::table('effectiveness_sub_immediate_outcomes')
+                ->whereIn('id', $validated['effectiveness_sub_io_ids'] ?? [])
+                ->pluck('immediate_outcome_id')
+                ->unique()
+                ->toArray();
+
+            return redirect()
+                ->route('fiu.effectiveness.folders.index')
+                // We pass the parent IDs in the session so the UI knows what to highlight!
+                ->with('success', 'Document successfully mapped to selected Outcomes.')
+                ->with('recently_updated_ios', $parentIoIds); 
+        }
+
+
+       });
+}
 
  
-  /**
-     * Show detailed dashboards tracking individual folders or custom tracks dynamically
-     */
-    public function show($track)
-    {
-        $isFiuStaff = auth()->user()->is_fiu_staff ?? false;
-        $userInstitutionId = auth()->user()->institution_id ?? null;
+ public function show($code)
+{
+    $user = auth()->user();
+    $isFiuStaff = $user->is_fiu_staff ?? false;
+    $userInstitutionId = $user->institution_id ?? null;
 
-        $trackData = DB::table('compliance_tracks')
-            ->where('id', $track)
-            ->orWhere('slug', $track)
-            ->first();
+    // 1. Fetch the Parent Immediate Outcome based on the route code (e.g., 'IO.1')
+    $immediateOutcome = \App\Models\ImmediateOutcome::where('code', $code)->firstOrFail();
 
-        if ($trackData) {
-            $viewPath = match ($trackData->slug) {
-                'technical-compliance' => 'fiu.tracks.TechnicalCompliance.folders.index',
-                'effectiveness'         => 'fiu.tracks.Effectiveness.index',
-                default                 => 'fiu.tracks.show',
-            };
+    // 2. 🌟 SMART FETCH: Load Sub-IOs AND their attached Master Documents instantly!
+    $subOutcomes = \App\Models\EffectivenessSubImmediateOutcome::where('immediate_outcome_id', $immediateOutcome->id)
+        ->with(['documents' => function ($query) use ($isFiuStaff, $userInstitutionId) {
+            
+            // 🛡️ SECURITY: If the user is NOT FIU Staff, enforce the Permissions Pivot Bridge
+            if (!$isFiuStaff) {
+                $query->whereHas('institutions', function ($permissionQuery) use ($userInstitutionId) {
+                    $permissionQuery->where('institution_id', $userInstitutionId);
+                });
+            }
 
-            $rawFolders = DB::table('folders')
-                ->leftJoin('technical_compliance_documents', 'folders.id', '=', 'technical_compliance_documents.folder_id')
-                ->select(
-                    'folders.*',
-                    DB::raw('COUNT(technical_compliance_documents.id) as documents_count')
-                )
-                ->where('folders.compliance_track_id', $trackData->id)
-                ->whereNull('folders.parent_id') 
-                ->where(function($query) use ($isFiuStaff, $userInstitutionId) {
-                    if ($isFiuStaff) return $query;
-                    return $query->where('visibility_scope', 'shared')
-                                 ->where('institution_id', $userInstitutionId);
-                })
-                ->groupBy('folders.id')
-                ->orderBy('folders.name')
-                ->get();
+            // Order newest documents first
+            $query->orderBy('created_at', 'desc');
+            
+        }])->get();
 
-            $folders = $rawFolders->map(function ($folder) {
-                $folder->institutions = collect([]); 
-                $folder->institutions_count = 0;
-                return $folder;
-            });
-
-            return view($viewPath, [
-                'track'   => (array) $trackData, 
-                'folders' => $folders
-            ]);
-        }
-
-        // 🛡️ SUB-SECTION GATEKEEPER: Deep-diving a singular folder row via its slug string
-        $folder = \App\Models\TechnicalComplianceFolder::query()
-            ->where('slug', $track)
-            ->where(function($query) use ($isFiuStaff, $userInstitutionId) {
-                if ($isFiuStaff) return $query;
-                return $query->where('visibility_scope', 'shared')
-                             ->where('institution_id', $userInstitutionId);
-            })
-            ->firstOrFail(); // 💥 Triggers standard clean 404 instantly if unauthorized!
-
-        $documents = DB::table('technical_compliance_documents')
-            ->where('folder_id', $folder->id)
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        $folder->institutions = collect([]);
-
-        return view('fiu.tracks.TechnicalCompliance.folders.show', compact('folder', 'documents'));
-    }
+    // 3. Send it perfectly packaged to your split dashboard view
+    return view('fiu.effectiveness.show', compact('immediateOutcome', 'subOutcomes'));
+}
 
     public function edit($track)
     {

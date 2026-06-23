@@ -25,22 +25,20 @@ class Document extends Model
      *
      * @var array<int, string>
      */
-    protected $fillable = [
-        'workspace_track',       // 'technical' or 'effectiveness'
-        'visibility_scope',      // 'shared' or 'internal'
-        'title',
-        'name',                  // Internal document systemic code/tag
-        'reporting_institution', // Free-text source label or fallback string
-        'date_logged',
-        'document_date',
-        'status',                // 'submitted', 'under-review', etc.
-        'remarks',               // Storage text area for audit logs and review notes
-        'file_path',             // Location pointing inside your secure private storage disk
-        'external_file_name',
-        'user_id',               // The internal staff manager node that uploaded/approved the document
-        'institution_id',        // Keeping legacy single-institution tracking compatibility
-        'folder_id',             // Keeping legacy folder tracking compatibility if required
-    ];
+   protected $fillable = [
+    'workspace_track',
+    'visibility_scope',
+    'title',
+    'name',
+    'reporting_institution',
+    'date_logged',
+    'document_date',
+    'status',
+    'remarks',
+    'file_path',
+    'external_file_name',
+    'user_id'
+];
 
     /**
      * The attributes that should be cast to native PHP data types.
@@ -57,14 +55,6 @@ class Document extends Model
     | Core Direct One-To-Many Relationships
     |--------------------------------------------------------------------------
     */
-
-    /**
-     * The internal staff manager or review officer who logged/owns this document node.
-     */
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
 
     /**
      * Legacy single institution relationship link.
@@ -103,15 +93,15 @@ class Document extends Model
     /**
      * Workspace [Effectiveness Outcomes]: Sub-IO constraints linked to this record execution node.
      */
-    public function subOutcomes(): BelongsToMany
-    {
-        return $this->belongsToMany(
-            EffectivenessSubImmediateOutcome::class, 
-            'document_sub_io', // Your many-to-many intermediate bridge table
-            'document_id', 
-            'sub_io_id'
-        )->withTimestamps();
-    }
+ public function subImmediateOutcomes()
+{
+    return $this->belongsToMany(
+        \App\Models\EffectivenessSubImmediateOutcome::class,
+        'document_sub_io',
+        'document_id',
+        'sub_io_id'
+    );
+}
 
     /**
      * Access Control [Shared Scope]: Multi-tenant tenant permissions network directory mapping.
@@ -124,7 +114,7 @@ class Document extends Model
             'document_institution_visibility', // The pivot table we created
             'document_id',
             'institution_id'
-        );
+        )->withPivot('workspace_track');
     }
 
     /**
@@ -137,6 +127,6 @@ class Document extends Model
             'document_user', 
             'document_id', 
             'user_id'
-        )->withTimestamps();
+        )->withPivot('workspace_track')->withTimestamps();
     }
 }

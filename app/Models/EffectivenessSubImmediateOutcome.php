@@ -36,10 +36,15 @@ class EffectivenessSubImmediateOutcome extends Model
         return $this->belongsTo(EffectivenessImmediateOutcome::class, 'immediate_outcome_id');
     }
 
-    public function documents(): HasMany
-    {
-        return $this->hasMany(EffectivenessDocument::class, 'effectiveness_sub_io_id');
-    }
+ public function documents()
+{
+    return $this->belongsToMany(
+        \App\Models\Document::class, 
+        'document_sub_io', 
+        'sub_io_id', 
+        'document_id'
+    );
+}
 
     public function scopeActive(Builder $query): Builder
     {
