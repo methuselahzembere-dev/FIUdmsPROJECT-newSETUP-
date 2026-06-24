@@ -1,27 +1,26 @@
 <x-app-layout>
-    @php
-        $immediateOutcomes = $immediateOutcomes ?? collect();
-        $immediateOutcome = $immediateOutcome ?? $immediateOutcomes->first();
-        $subOutcomes = $subOutcomes ?? ($immediateOutcome?->subOutcomes?->values() ?? collect());
-        $selectedSubOutcome = $selectedSubOutcome ?? $subOutcomes->first();
-        $documents = $documents ?? new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
-        $documentsBySubIo = isset($documentsBySubIo) && is_array($documentsBySubIo)
-            ? $documentsBySubIo
-            : (isset($documentsBySubIo) && $documentsBySubIo instanceof \Illuminate\Support\Collection
-                ? $documentsBySubIo->all()
-                : []);
-        $documentCounts = isset($documentCounts) && is_array($documentCounts)
-            ? $documentCounts
-            : (isset($documentCounts) && $documentCounts instanceof \Illuminate\Support\Collection
-                ? $documentCounts->all()
-                : []);
-        $currentDocumentTotal = method_exists($documents, 'total') ? $documents->total() : (is_countable($documents) ? count($documents) : 0);
-    @endphp
+@php
+    $immediateOutcomes = $immediateOutcomes ?? collect();
+    $immediateOutcome = $immediateOutcome ?? $immediateOutcomes->first();
+    $subOutcomes = $subOutcomes ?? ($immediateOutcome?->subOutcomes?->values() ?? collect());
+    
+    // 1. Figure out which Sub-IO is selected based on the URL parameter (or default to the first one)
+    $selectedSubIoCode = request('sub_io');
+    $selectedSubOutcome = $selectedSubIoCode 
+        ? $subOutcomes->firstWhere('code', $selectedSubIoCode) 
+        : $subOutcomes->first();
+
+ 
+    $documents = $selectedSubOutcome ? $selectedSubOutcome->documents : collect();
+
+    // 3. Simple counts
+    $currentDocumentTotal = $documents->count();
+@endphp
 
 <div x-data="{ sidebarOpen: true }" class="space-y-6">
     <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div class="space-y-3">
-            {{-- 🌟 FIXED: Added Native Browser Click Navigation to break past Alpine.js state hijacking --}}
+            {{-- Added Native Browser Click Navigation to break past Alpine.js state hijacking --}}
             <a
                 href="{{ route('fiu.effectiveness.folders.index') }}"
                 onclick="window.location.href='{{ route('fiu.effectiveness.folders.index') }}';"
@@ -122,9 +121,9 @@
                                                 {{ $subOutcome->description ?: 'Sub-Immediate Outcome category for grouped Effectiveness documents.' }}
                                             </p>
                                         </div>
-                                        <span class="inline-flex shrink-0 rounded-full {{ $isActive ? 'bg-violet-50 text-violet-700' : 'bg-slate-200 text-slate-700' }} px-2.5 py-1 text-xs font-semibold">
-                                            {{ $documentsBySubIo[$subOutcome->id] ?? 0 }}
-                                        </span>
+                                      <span class="inline-flex shrink-0 rounded-full {{ $isActive ? 'bg-violet-50 text-violet-700' : 'bg-slate-200 text-slate-700' }} px-2.5 py-1 text-xs font-semibold">
+                                 {{ $subOutcome->documents->count() }}
+                                      </span>
                                     </div>
                                 </a>
                             @empty
@@ -181,15 +180,18 @@
                             <tbody class="divide-y divide-slate-100 bg-white">
                                 @forelse ($documents as $document)
                                     <tr class="transition hover:bg-slate-50/80">
-                                        <td class="px-6 py-4">
-                                            <div>
-                                                <p class="font-medium text-slate-900">{{ $document->title ?? $document->name ?? 'Untitled document' }}</p>
-                                                @if (!empty($document->file_name))
-                                                    <p class="mt-1 text-xs text-slate-500">{{ $document->file_name }}</p>
-                                                @endif
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 text-slate-600">{{ $document->subImmediateOutcome->code ?? $document->io_sub_code ?? $selectedSubOutcome?->code ?? '—' }}</td>
+
+                                    <td class="px-6 py-4">
+                                           <div>
+                                   <p class="font-medium text-slate-900">{{ $document->title ?? $document->name ?? 'Untitled document' }}</p>
+        
+                                   @if (!empty($document->external_file_name))
+                                  <p class="mt-1 text-xs text-slate-500">{{ $document->external_file_name }}</p>
+                                     @endif
+                                       </div>
+                                      </td>
+
+                                  <td class="px-6 py-4 text-slate-600"> {{ $selectedSubOutcome?->code ?? '—' }}</td>
                                         <td class="px-6 py-4 text-slate-600">{{ $document->institution->name ?? $document->reporting_institution ?? '—' }}</td>
                                         <td class="px-6 py-4 text-slate-600">{{ optional($document->date_logged ?? $document->created_at)->format('d M Y') ?? '—' }}</td>
                                         <td class="px-6 py-4">
