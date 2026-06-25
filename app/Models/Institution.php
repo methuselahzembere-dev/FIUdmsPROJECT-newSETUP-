@@ -24,10 +24,12 @@ class Institution extends Model
         return $this->hasMany(User::class, 'reporting_institution_id');
     }
 
-    public function assignedImmediateOutcomes(): BelongsToMany
+  /**
+     * The Effectiveness Immediate Outcomes assigned to this institution.
+     */
+    public function effectivenessImmediateOutcomes()
     {
-        return $this->belongsToMany(ImmediateOutcome::class, 'institution_immediate_outcome')
-            ->withTimestamps();
+        return $this->belongsToMany(EffectivenessImmediateOutcome::class, 'effectiveness_immediate_outcome_institution');
     }
 
     public function submissions(): HasMany

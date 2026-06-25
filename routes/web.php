@@ -62,11 +62,17 @@ Route::middleware(['auth', 'role:fiu_admin,fiu_reviewer'])->prefix('fiu')->as('f
         return view('fiu.dashboard', compact('stats', 'recentSubmissions'));
     })->name('dashboard');
 
-          // download routes
-      Route::get('/documents/{document}/download', [\App\Http\Controllers\Fiu\ComplianceTrackController::class, 'download'])
-    ->name('documents.download');
+    // download routes
+    Route::get('/documents/{document}/download', [\App\Http\Controllers\Fiu\ComplianceTrackController::class, 'download'])
+        ->name('documents.download');
 
-    // Effectiveness Tracks Routing
+   // Access Control Matrix (Institution-Centric)
+    Route::prefix('access-control')->name('access.')->group(function () {
+        Route::get('/effectiveness/{institution?}', [\App\Http\Controllers\Fiu\AccessControlController::class, 'index'])->name('effectiveness.index');
+        Route::post('/effectiveness/{institution}/sync', [\App\Http\Controllers\Fiu\AccessControlController::class, 'sync'])->name('effectiveness.sync');
+    });
+
+    // Effectiveness Tracks Routing ( FIXED: Closing braces are perfectly balanced)
     Route::prefix('tracks/effectiveness')->name('effectiveness.folders')->group(function (): void {
         Route::get('/', [EffectivenessFolderController::class, 'index'])->name('.index');
         Route::get('/{code}/documents/create', [EffectivenessFolderController::class, 'create'])->name('.documents.create');
@@ -91,20 +97,13 @@ Route::middleware(['auth', 'role:fiu_admin,fiu_reviewer'])->prefix('fiu')->as('f
     Route::resource('tracks', ComplianceTrackController::class)->except(['show']);
     Route::resource('folders', FiuFolderController::class);
     Route::resource('outcomes', FiuImmediateOutcomeController::class);
-    
 
-
-    // 🌟 FIXED: Cleaned names. Because of 'as(fiu.)', these automatically become 'fiu.documents.create' and 'fiu.documents.store'
+    // FIXED: Cleaned names. Because of 'as(fiu.)', these automatically become 'fiu.documents.create' and 'fiu.documents.store'
     Route::get('documents/create', [ComplianceTrackController::class, 'createDocument'])->name('documents.create');
     Route::post('documents', [ComplianceTrackController::class, 'storeDocument'])->name('documents.store');
 
-        // 🌟 FIXED: We tell the resource to ignore create/store so our new controller handles them!
+    // FIXED: We tell the resource to ignore create/store so our new controller handles them!
     Route::resource('documents', DocumentReviewController::class)->except(['create', 'store']);
-
-    // Shared Operational Controls
-    Route::get('outcome-assignments', [OutcomeAssignmentController::class, 'index'])->name('outcomes.assignments.index');
-    Route::get('outcome-assignments/create', [OutcomeAssignmentController::class, 'create'])->name('outcomes.assignments.create');
-    Route::post('outcome-assignments', [OutcomeAssignmentController::class, 'store'])->name('outcomes.assignments.store');
 
     Route::get('archive', [FiuArchiveController::class, 'index'])->name('archive.index');
     Route::get('reports/compliance', [ComplianceReportController::class, 'index'])->name('reports.compliance');
@@ -116,7 +115,7 @@ Route::middleware(['auth', 'role:fiu_admin,fiu_reviewer'])->prefix('fiu')->as('f
 });
 
 // =========================================================================
-// 🏦 4. REPORTING INSTITUTIONS DOMAIN (ZIMRA, ZRP, JSC)
+// 🏢 4. REPORTING INSTITUTIONS DOMAIN (ZIMRA, ZRP, JSC)
 // =========================================================================
 Route::middleware(['auth', 'role:institution_representative'])->prefix('institution')->name('institution.')->group(function () {
         
@@ -126,17 +125,21 @@ Route::middleware(['auth', 'role:institution_representative'])->prefix('institut
             'portal_title' => 'ZIMRA Compliance Gateway',
             'short_name' => 'ZIMRA'
         ];
+   
         $assignedImmediateOutcomes = [
             ['number' => 1, 'short_title' => 'Policy Framework Collaboration'],
             ['number' => 2, 'short_title' => 'Targeted Financial Sanctions Interception']
         ];
+        
         $folders = [
             ['name' => 'Core Audits', 'track' => 'Technical', 'description' => 'Standard technical compliance reporting modules.'],
             ['name' => 'Asset Tracking Registry', 'track' => 'Effectiveness', 'description' => 'Targeted reporting modules tied directly to IO 2.', 'immediate_outcome' => 'Immediate Outcome 2']
         ];
+
         $submissions = [
             ['document' => 'Q2_AML_Filing_v1.pdf', 'folder' => 'Core Audits', 'status' => 'Pending Review', 'updated_at' => '2 hours ago']
         ];
+
         return view('institution.dashboard', compact('institution', 'assignedImmediateOutcomes', 'folders', 'submissions'));
     })->name('dashboard');
 

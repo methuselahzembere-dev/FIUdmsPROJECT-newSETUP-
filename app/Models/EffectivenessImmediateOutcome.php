@@ -44,4 +44,12 @@ class EffectivenessImmediateOutcome extends Model
     {
         return $query->where('is_active', true);
     }
+
+    /**
+     * The institutions that have access to this Immediate Outcome.
+     */
+    public function institutions()
+    {
+        return $this->belongsToMany(Institution::class, 'effectiveness_immediate_outcome_institution');
+    }
 }
