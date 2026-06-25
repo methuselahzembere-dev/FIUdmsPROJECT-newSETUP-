@@ -160,4 +160,5 @@ public function create(): View
 
         return redirect()->route('fiu.documents.index')->with('success', 'Document archived successfully.');
     }
+
 }

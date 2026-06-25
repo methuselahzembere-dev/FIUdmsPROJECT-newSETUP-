@@ -4,7 +4,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Fiu\ArchiveController as FiuArchiveController;
 use App\Http\Controllers\Fiu\ComplianceReportController;
 use App\Http\Controllers\Fiu\ComplianceTrackController;
-use App\Http\Controllers\Fiu\DocumentReviewController; // 🌟 Restored this import
+use App\Http\Controllers\Fiu\DocumentReviewController; 
 use App\Http\Controllers\Fiu\FolderController as FiuFolderController;
 use App\Http\Controllers\Fiu\ImmediateOutcomeController as FiuImmediateOutcomeController;
 use App\Http\Controllers\Fiu\InstitutionController as FiuInstitutionController;
@@ -61,6 +61,10 @@ Route::middleware(['auth', 'role:fiu_admin,fiu_reviewer'])->prefix('fiu')->as('f
         ];
         return view('fiu.dashboard', compact('stats', 'recentSubmissions'));
     })->name('dashboard');
+
+          // download routes
+      Route::get('/documents/{document}/download', [\App\Http\Controllers\Fiu\ComplianceTrackController::class, 'download'])
+    ->name('documents.download');
 
     // Effectiveness Tracks Routing
     Route::prefix('tracks/effectiveness')->name('effectiveness.folders')->group(function (): void {

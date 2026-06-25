@@ -8,6 +8,8 @@ use App\Models\Institution;
 use App\Models\TechnicalComplianceFolder;
 use App\Models\TechnicalComplianceDocument;
 use App\Models\User;
+use App\Models\Document;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -201,7 +203,7 @@ public function storeDocument(Request $request)
         $originalFilename = $request->input('external_file_name') ?? basename($finalPath);
     }
 
-    // 🌟 SENIOR REFACTOR: Wrap DB operations in a transaction for data safety
+    //  Wrap DB operations in a transaction for data safety
     return \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $request, $finalPath, $originalFilename, $mimeType) {
         
         // 3. Create the SINGLE Master Document
@@ -215,7 +217,7 @@ public function storeDocument(Request $request)
             'remarks'               => $validated['remarks'] ?? null,
             'file_path'             => $finalPath,
             
-            // 🌟 FIXED: Mapped to the exact column names from your migration!
+            // Mapped to the exact column names from your migration!
             'external_file_name'    => $originalFilename, 
             'user_id'               => $request->user()?->id ?? auth()->id() ?? 1,
         ]);
@@ -265,6 +267,36 @@ public function storeDocument(Request $request)
        });
 }
 
+// Don't forget to ensure Illuminate\Http\Request is imported at the top!
+
+public function download(Request $request, Document $document)
+{
+    $disk = Storage::disk('private');
+
+    if (!$disk->exists($document->file_path)) {
+        abort(404, 'The physical file could not be located in the secure vault.');
+    }
+
+    // Check the URL for ?mode=download
+    if ($request->query('mode') === 'download') {
+        // Forces the browser to save the file
+        return $disk->download($document->file_path, $document->external_file_name);
+    }
+
+    // Default behavior: Stream the file INLINE to the browser
+    // The browser will open PDFs/Images in a new tab, but will still auto-download Word/Excel files.
+    return $disk->response($document->file_path, $document->external_file_name, [
+        'Content-Disposition' => 'inline; filename="' . $document->external_file_name . '"'
+    ]);
+}
+
+public function preview(Document $document)
+    {
+        // Add permission checks here if necessary
+        
+        return view('fiu.documents.preview', compact('document'));
+    }
+
  
  public function show($code)
 {
@@ -275,11 +307,11 @@ public function storeDocument(Request $request)
     // 1. Fetch the Parent Immediate Outcome based on the route code (e.g., 'IO.1')
     $immediateOutcome = \App\Models\ImmediateOutcome::where('code', $code)->firstOrFail();
 
-    // 2. 🌟 SMART FETCH: Load Sub-IOs AND their attached Master Documents instantly!
+    // 2.  Load Sub-IOs AND their attached Master Documents instantly!
     $subOutcomes = \App\Models\EffectivenessSubImmediateOutcome::where('immediate_outcome_id', $immediateOutcome->id)
         ->with(['documents' => function ($query) use ($isFiuStaff, $userInstitutionId) {
             
-            // 🛡️ SECURITY: If the user is NOT FIU Staff, enforce the Permissions Pivot Bridge
+            // If the user is NOT FIU Staff, enforce the Permissions Pivot Bridge
             if (!$isFiuStaff) {
                 $query->whereHas('institutions', function ($permissionQuery) use ($userInstitutionId) {
                     $permissionQuery->where('institution_id', $userInstitutionId);
