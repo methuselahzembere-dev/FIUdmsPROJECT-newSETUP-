@@ -61,15 +61,20 @@ class TechnicalComplianceDocument extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    public function institutions(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(
+            \App\Models\Institution::class, 
+            'document_institution',        
+            'document_id',
+            'institution_id'
+        )->withTimestamps();
+    }
+
    
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
-    }
-
-    public function institution(): BelongsTo
-    {
-        return $this->belongsTo(ReportingInstitution::class, 'reporting_institution_id');
     }
 
     public function uploader(): BelongsTo

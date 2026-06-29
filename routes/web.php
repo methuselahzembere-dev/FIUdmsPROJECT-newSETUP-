@@ -72,20 +72,30 @@ Route::middleware(['auth', 'role:fiu_admin,fiu_reviewer'])->prefix('fiu')->as('f
         Route::post('/effectiveness/{institution}/sync', [\App\Http\Controllers\Fiu\AccessControlController::class, 'sync'])->name('effectiveness.sync');
     });
 
-    // Effectiveness Tracks Routing ( FIXED: Closing braces are perfectly balanced)
+   // =========================================================================
+    // 🟧 EFFECTIVENESS TRACKS ROUTING
+    // =========================================================================
     Route::prefix('tracks/effectiveness')->name('effectiveness.folders')->group(function (): void {
+        // Keeping your existing index, create, and store routes intact
         Route::get('/', [EffectivenessFolderController::class, 'index'])->name('.index');
         Route::get('/{code}/documents/create', [EffectivenessFolderController::class, 'create'])->name('.documents.create');
         Route::post('/{code}/documents', [EffectivenessFolderController::class, 'store'])->name('.documents.store');
-        Route::get('/{code}', [EffectivenessFolderController::class, 'show'])->name('.show');
+        
+        // 🌟 FIXED: Effectiveness '{code}' routes safely to the ComplianceTrackController
+        Route::get('/{code}', [\App\Http\Controllers\Fiu\ComplianceTrackController::class, 'show'])->name('.show');
     });
 
-    // Technical Compliance Tracks Routing
+    // =========================================================================
+    // 🟦 TECHNICAL COMPLIANCE TRACKS ROUTING
+    // =========================================================================
     Route::prefix('tracks/technical-compliance')->name('technical-compliance.folders.')->group(function (): void {
+        // Keeping your existing index, create, and store routes intact
         Route::get('/', [ComplianceTrackController::class, 'technicalIndex'])->name('index');
         Route::get('/create', [ComplianceTrackController::class, 'create'])->name('create');
         Route::post('/', [ComplianceTrackController::class, 'store'])->name('store');
-        Route::get('/{slug}', [ComplianceTrackController::class, 'show'])->name('show');
+        
+        // 🌟 FIXED: Technical '{folder:slug}' routes safely to your TechnicalComplianceFolderController
+        Route::get('/{folder:slug}', [\App\Http\Controllers\Fiu\TechnicalComplianceFolderController::class, 'show'])->name('show');
     });
 
     // Fallback Layout for base track definitions

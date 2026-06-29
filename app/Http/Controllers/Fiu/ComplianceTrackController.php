@@ -31,10 +31,10 @@ class ComplianceTrackController extends Controller
   /**
      * Display the main workspace directory folder index map
      */
-    public function index()
+public function index()
     {
-        // 🌟 FORCE FIU STAFF STATE TO TRUE TO SEE BOTH PRIVATE AND SHARED
-        // (Later you can dynamically bind this to your auth profiles role/column checks)
+        //  FORCE FIU STAFF STATE TO TRUE TO SEE BOTH PRIVATE AND SHARED
+        // (Later you can dynamically bind this to your institutional_admin role checks)
         $isFiuStaff = true; 
         $userInstitutionId = auth()->user()->institution_id ?? null;
 
@@ -43,29 +43,34 @@ class ComplianceTrackController extends Controller
             ->where(function($query) use ($isFiuStaff, $userInstitutionId) {
                 if ($isFiuStaff) {
                     // 🔒 FIU staff bypass constraints: Fetch EVERYTHING (shared AND private)
-                    return $query;
+                    return; // In a closure, just returning does nothing (which correctly applies no extra filters)
                 }
                 
-                // External institutional users are strictly limited to shared folders matching their company
-                return $query->where('visibility_scope', 'shared')
-                             ->where('institution_id', $userInstitutionId);
+                // External institutional users are strictly limited to shared folders matching their company.
+                // NOTE: If you upgraded folders to pivot tables, this should be:
+                 $query->where('visibility_scope', 'shared')->whereHas('institutions', fn($q) => $q->where('institutions.id', $userInstitutionId));
+                    
             })
             ->with([
-                'institution' => fn($query) => $query->select('id', 'name'),
+                // 1. These belong to the FOLDER
+                'creator:id,name',
+                'updater:id,name',
+                'institution' => fn($query) => $query->select('id', 'name'), // Change to 'institutions' if using pivot tables!
+                
+                // 2. These belong to the DOCUMENTS inside the folder
                 'documents' => fn($query) => $query->with([
-                    'creator:id,name', 
-                    'updater:id,name'
+                    'uploader:id,name' 
                 ])
             ])
             ->withCount('documents as documents_count')
             ->orderBy('name')
-            ->paginate(50); // Increased pagination so long lists scroll fluidly in the sidebar
+            ->paginate(50);
 
         return view('fiu.tracks.TechnicalCompliance.folders.index', compact('folders'));
     }
 
     /**
-     * 📁 FOLDER REGISTRATION: Show the form for creating a new technical compliance folder.
+     *  FOLDER REGISTRATION: Show the form for creating a new technical compliance folder.
      */
     public function create()
     {
@@ -103,7 +108,7 @@ public function store(Request $request)
                 'description' => $validated['description'],
                 'compliance_track_id' => 1, 
                 'visibility_scope' => $scope, 
-                'institution_id' => null, // 🌟 Legacy column: Leave null since we now use pivot tables!
+                'institution_id' => null, // Leave null since we now use pivot tables!
                 'created_by' => auth()->id(),
                 'is_active' => true,
                 'is_default' => false,
@@ -132,12 +137,12 @@ public function store(Request $request)
 
         $technicalFolders = TechnicalComplianceFolder::where('compliance_track_id', $techTrackId)->orderBy('name')->get();
         
-        // 🌟 FIXED: Use Eloquent models so Global Tenant Scopes and Admin bypass triggers execute perfectly
+        //  Use Eloquent models so Global Tenant Scopes and Admin bypass triggers execute perfectly
         $immediateOutcomes = \App\Models\EffectivenessImmediateOutcome::orderBy('code')->get();
         $subOutcomes = \App\Models\EffectivenessSubImmediateOutcome::orderBy('code')->get();
         $institutions = Institution::orderBy('name')->get();
         
-        // 👉 CHANGE HERE: Name it $fiuUsers to match your Blade template!
+        //  Name it $fiuUsers to match your Blade template!
         $fiuUsers = User::whereIn('role', ['fiu_reviewer', 'fiu_admin'])->orderBy('name')->get();
         // (Or just User::orderBy('name')->get() if you really want everyone)
 
@@ -225,6 +230,8 @@ public function storeDocument(Request $request)
         if ($validated['workspace_track'] === 'technical' && !empty($validated['technical_folder_ids'])) {
             // Maps to `document_technical_folder` table
             $document->technicalFolders()->sync($validated['technical_folder_ids']);
+
+
         } elseif ($validated['workspace_track'] === 'effectiveness' && !empty($validated['effectiveness_sub_io_ids'])) {
             // Maps to `document_sub_io` table
             $document->subImmediateOutcomes()->sync($validated['effectiveness_sub_io_ids']);
@@ -261,13 +268,21 @@ public function storeDocument(Request $request)
                 // We pass the parent IDs in the session so the UI knows what to highlight!
                 ->with('success', 'Document successfully mapped to selected Outcomes.')
                 ->with('recently_updated_ios', $parentIoIds); 
+
+
+                } elseif ($validated['workspace_track'] === 'technical') {
+            
+            // the redirect for Technical Compliance!
+            return redirect()
+                ->route('fiu.technical-compliance.folders.index') // Or back to a specific folder if you prefer
+                ->with('success', 'Document successfully uploaded and mapped to Technical Folders.');
+        
         }
 
 
        });
 }
 
-// Don't forget to ensure Illuminate\Http\Request is imported at the top!
 
 public function download(Request $request, Document $document)
 {
@@ -301,11 +316,13 @@ public function preview(Document $document)
  public function show($code)
 {
     $user = auth()->user();
-    $isFiuStaff = $user->is_fiu_staff ?? false;
-    $userInstitutionId = $user->institution_id ?? null;
+// 🌟 FIXED: We check your actual FIU roles to grant Master Access!
+   $isFiuStaff = in_array($user->role, ['fiu_admin', 'fiu_reviewer']);
+   $userInstitutionId = $user->institution_id ?? null;
+   
 
     // 1. Fetch the Parent Immediate Outcome based on the route code (e.g., 'IO.1')
-    $immediateOutcome = \App\Models\ImmediateOutcome::where('code', $code)->firstOrFail();
+    $immediateOutcome = \App\Models\EffectivenessImmediateOutcome::where('code', $code)->firstOrFail();
 
     // 2.  Load Sub-IOs AND their attached Master Documents instantly!
     $subOutcomes = \App\Models\EffectivenessSubImmediateOutcome::where('immediate_outcome_id', $immediateOutcome->id)
@@ -324,7 +341,7 @@ public function preview(Document $document)
         }])->get();
 
     // 3. Send it perfectly packaged to your split dashboard view
-    return view('fiu.effectiveness.show', compact('immediateOutcome', 'subOutcomes'));
+    return view('fiu.tracks.Effectiveness.show', compact('immediateOutcome', 'subOutcomes'));
 }
 
     public function edit($track)

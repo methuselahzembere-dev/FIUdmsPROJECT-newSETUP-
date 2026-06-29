@@ -169,8 +169,14 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 text-sm text-slate-600">
                             @foreach($folders as $folder)
-                                @forelse($folder->documents ?? [] as $document)
-                                    <tr class="document-row folder-group-{{ $folder->id }} hidden hover:bg-slate-50/60 transition-colors duration-150">
+
+                            @forelse($folder->documents ?? [] as $document)
+
+                            <tr id="doc-{{ $document->id }}" 
+    class="document-row folder-group-{{ $folder->id }} {{ request('active_folder') == $folder->id ? '' : 'hidden' }} hover:bg-slate-50/60 transition-all duration-500 target:bg-amber-100 target:ring-2 target:ring-amber-400">
+                  
+
+
                                         <td class="px-6 py-3.5 font-medium text-slate-800 flex items-center gap-3 min-w-0">
                                             <svg class="h-5 w-5 text-rose-500 shrink-0" fill="currentColor" viewBox="0 0 24 24">
                                                 <path d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V7.5H14.25a2.25 2.25 0 0 1-2.25-2.25V1.5H5.625z"/>
@@ -201,7 +207,7 @@
                                         </td>
 
                                         <td class="px-4 py-3.5 text-center text-xs font-semibold text-slate-700">
-                                            {{ $document->creator?->name ?: 'System' }}
+                                            {{ $document->uploader?->name ?: 'System' }}
                                         </td>
 
                                         <td class="px-4 py-3.5 text-center text-xs text-slate-600">
@@ -253,13 +259,13 @@
         items.forEach(item => {
             const folderName = item.getAttribute('data-folder-name') || '';
             
-            // 🌟 STEP 1: Grab the raw database scope string from the DOM attribute safely
+            //  STEP 1: Grab the raw database scope string from the DOM attribute safely
             let rawScope = (item.getAttribute('data-folder-scope') || 'shared').toLowerCase().trim();
             
-            // 🌟 STEP 2: Normalize manual variations ('private') and seeds ('fiu-private') onto a clean single key
+            //  STEP 2: Normalize manual variations ('private') and seeds ('fiu-private') onto a clean single key
             let normalizedFolderScope = (rawScope === 'fiu-private' || rawScope === 'private') ? 'fiu-private' : 'shared';
             
-            // 🔒 STEP 3: Check if the normalized folder matches the active tab scope window ('shared' or 'fiu-private')
+            //  STEP 3: Check if the normalized folder matches the active tab scope window ('shared' or 'fiu-private')
             if (normalizedFolderScope === currentActiveScope) {
                 // If the scope matches, apply your search query text input check
                 if (query === '' || folderName.includes(query)) {
@@ -378,11 +384,36 @@
         activeFolderId = id;
     }
 
-    // INITIALIZATION NODE PASS: Filter items safely on load
+   // INITIALIZATION NODE PASS: Filter items safely on load
     document.addEventListener('DOMContentLoaded', function() {
-        // Force the layout state manager to mount the 'shared' scope by default on load
+        // 1. Mount the shared scope by default
         switchSidebarScopeTab('shared');
+
+        // 2. 🚦 TRAFFIC COP INTERCEPT 🚦: Check if Laravel sent us a specific folder via the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeFolderFromUrl = urlParams.get('active_folder');
+
+        if (activeFolderFromUrl) {
+            // Find the hidden button in the sidebar and programmatically click it!
+            // This runs your entire selectFolder() function, populating the UI and unhiding the rows.
+            const targetFolderBtn = document.getElementById('btn-folder-' + activeFolderFromUrl);
+            
+            if (targetFolderBtn) {
+                targetFolderBtn.click();
+
+                // 3. Smoothly scroll down to the specific document highlight
+                setTimeout(() => {
+                    if (window.location.hash) {
+                        const targetRow = document.querySelector(window.location.hash);
+                        if (targetRow) {
+                            targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }
+                }, 100); // 100ms delay ensures the UI has fully painted the unhidden rows first
+            }
+        }
     });
+    
 
 
     /**
@@ -399,7 +430,7 @@ window.incrementFolderDocumentCount = function(folderId, incrementAmount = 1) {
     // 2. Write the new count metric cleanly
     badge.innerText = newCount;
 
-    // 🌟 SENIOR MOVE: Apply attention-grabbing pulse animations so the user registers the dynamic change
+    //  Apply attention-grabbing pulse animations so the user registers the dynamic change
     badge.classList.remove('bg-slate-100', 'text-slate-500');
     badge.classList.add('bg-blue-600', 'text-white', 'scale-110', 'transition-all', 'duration-300');
 

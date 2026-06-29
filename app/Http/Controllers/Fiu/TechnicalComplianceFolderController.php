@@ -47,16 +47,20 @@ class TechnicalComplianceFolderController extends Controller
             ->with('status', 'Technical Compliance folder created successfully.');
     }
 
-    public function show(TechnicalComplianceFolder $folder): View
+public function show(TechnicalComplianceFolder $folder): View
     {
+        // 1. Load the basic relationships for the folder 
         $folder->load([
             'creator:id,name',
-            'institutions:id,name,code',
-            'documents' => fn ($query) => $query->with('institution:id,name', 'uploader:id,name')->latest()->paginate(15),
+            'institutions:id,name' 
         ]);
 
-        $documents = $folder->documents()->with('institution:id,name', 'uploader:id,name')->latest()->paginate(15);
+        // 2. Fetch the paginated documents cleanly
+        $documents = $folder->documents()
+            ->with(['institutions:id,name', 'uploader:id,name'])
+            ->latest()
+            ->paginate(15);
 
-        return view('fiu.technical-compliance.folders.show', compact('folder', 'documents'));
+        return view('fiu.tracks.TechnicalCompliance.folders.show', compact('folder', 'documents'));
     }
 }

@@ -83,14 +83,15 @@ protected static function booted(): void
         return $this->belongsTo(User::class, 'updated_by');
     }
 
-    /**
-     * 🌟 UPDATED SELF-REFERENCING DOCUMENTS / CHILD RELATIONSHIP
-     * Since files are stored in the same tree pattern using 'parent_id',
-     * this counts or collects nested item records flawlessly.
-     */
-    public function documents(): HasMany
+    public function documents(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
-        return $this->hasMany(TechnicalComplianceDocument::class, 'folder_id');
+        // Upgraded to look at pivot table!
+        return $this->belongsToMany(
+            \App\Models\Document::class,   // Using your master Document model
+            'document_technical_folder',   // The exact pivot table name from your upload logic
+            'folder_id',         // The column representing the folder (change to 'folder_id' if that's what your migration uses)
+            'document_id'                  // The column representing the document
+        )->withTimestamps();
     }
 
    

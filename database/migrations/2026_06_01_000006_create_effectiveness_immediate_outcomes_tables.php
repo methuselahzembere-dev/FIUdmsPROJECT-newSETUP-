@@ -22,7 +22,7 @@ return new class extends Migration
 
         Schema::create('effectiveness_sub_immediate_outcomes', function (Blueprint $table): void {
             $table->id();
-        // 🌟 FIXED: Keep constrained pointing strictly to the table, and use an explicit short foreign key name string
+        // Keep constrained pointing strictly to the table, and use an explicit short foreign key name string
     $table->foreignId('immediate_outcome_id')
         ->constrained('effectiveness_immediate_outcomes')
         ->cascadeOnDelete()

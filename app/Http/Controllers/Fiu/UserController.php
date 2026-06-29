@@ -13,22 +13,37 @@ use Illuminate\View\View;
 
 class UserController extends Controller
 {
-    public function index(Request $request): View
+   public function index(Request $request)
     {
-        $users = DB::table('users')
-            ->leftJoin('institutions', 'users.institution_id', '=', 'institutions.id')
-            ->select('users.*', 'institutions.name as institution_name')
-            ->when($request->string('q')->toString(), function ($query, string $search) {
-                $query->where(function ($query) use ($search) {
-                    $query->where('users.name', 'like', "%{$search}%")
-                        ->orWhere('users.email', 'like', "%{$search}%")
-                        ->orWhere('institutions.name', 'like', "%{$search}%");
-                });
-            })
-            ->latest('users.updated_at')
-            ->paginate(15);
+        // 1. Start the query and Eager Load the institution to optimize database calls
+        $query = User::with('institution')->latest();
 
-        return view('fiu.users.index', compact('users'));
+        // 2. Apply Smart Search (Name or Email)
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'like', "%{$searchTerm}%")
+                  ->orWhere('email', 'like', "%{$searchTerm}%");
+            });
+        }
+
+        // 3. Apply Role Filter
+        if ($request->filled('role')) {
+            $query->where('role', $request->role);
+        }
+
+        // 4. Apply Institution Filter
+        if ($request->filled('institution_id')) {
+            $query->where('institution_id', $request->institution_id);
+        }
+
+        // 5. Execute query with Pagination (15 per page) and preserve filter URLs
+        $users = $query->paginate(15)->withQueryString();
+
+        // 6. Fetch institutions to populate the filter dropdown
+        $institutions = \App\Models\Institution::orderBy('name')->get();
+
+        return view('fiu.users.index', compact('users', 'institutions'));
     }
 
 

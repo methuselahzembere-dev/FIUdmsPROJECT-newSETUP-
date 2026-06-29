@@ -93,15 +93,15 @@ class Document extends Model
     /**
      * Workspace [Effectiveness Outcomes]: Sub-IO constraints linked to this record execution node.
      */
- public function subImmediateOutcomes()
-{
-    return $this->belongsToMany(
-        \App\Models\EffectivenessSubImmediateOutcome::class,
-        'document_sub_io',
-        'document_id',
-        'sub_io_id'
-    );
-}
+public function subImmediateOutcomes(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(
+            \App\Models\EffectivenessSubImmediateOutcome::class,
+            'document_sub_io', // The new pivot table
+            'document_id',     // The foreign key for the document
+            'sub_io_id'        // The foreign key for the Sub-IO
+        )->withTimestamps();
+    }
 
     /**
      * Access Control [Shared Scope]: Multi-tenant tenant permissions network directory mapping.
@@ -115,6 +115,16 @@ class Document extends Model
             'document_id',
             'institution_id'
         )->withPivot('workspace_track');
+    }
+
+
+    /**
+     * Get the user who uploaded the document.
+     */
+    public function uploader(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        // We use 'uploader' as the alias, but tell Laravel to look for 'user_id'
+        return $this->belongsTo(\App\Models\User::class, 'user_id');
     }
 
     /**

@@ -187,9 +187,9 @@
                                 <th class="px-6 py-3">Status</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100 bg-white">
+                      <tbody class="divide-y divide-slate-100 bg-white">
                             @forelse ($documents as $document)
-                                <tr class="transition hover:bg-slate-50/80">
+                                <tr id="doc-{{ $document->id }}" class="transition duration-500 hover:bg-slate-50/80 target:bg-amber-100 target:ring-2 target:ring-amber-400">
                                     <td class="px-6 py-4">
                                         <div class="flex items-center justify-between gap-4">
                                             
