@@ -48,6 +48,11 @@ Route::middleware(['auth', 'role:fiu_admin,fiu_reviewer'])->prefix('fiu')->as('f
             'changes_requested' => 2,
             'archived_documents' => 25
         ];
+
+    $immediateOutcomes = \App\Models\EffectivenessImmediateOutcome::with('subOutcomes')
+        ->orderBy('code')
+        ->get();
+
         $recentSubmissions = [
             [
                 'institution' => 'ZIMRA', 
@@ -59,7 +64,7 @@ Route::middleware(['auth', 'role:fiu_admin,fiu_reviewer'])->prefix('fiu')->as('f
                 'status' => 'Pending Review'
             ]
         ];
-        return view('fiu.dashboard', compact('stats', 'recentSubmissions'));
+        return view('fiu.dashboard', compact('stats', 'recentSubmissions', 'immediateOutcomes'));
     })->name('dashboard');
 
     // download routes

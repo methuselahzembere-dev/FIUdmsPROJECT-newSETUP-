@@ -363,22 +363,28 @@
                             </div>
                         </div>
 
-                        <div x-show="outcomesOpen" x-collapse class="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-                            @foreach($immediateOutcomes as $outcome)
-                                <a href="{{ route('fiu.outcomes.show', $outcome['number']) }}" class="group rounded-2xl border border-slate-200 bg-slate-50 p-4 transition duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:shadow-sm">
-                                    <div class="flex items-center justify-between gap-3">
-                                        <p class="text-sm font-black text-slate-950 transition group-hover:text-blue-900">{{ $outcome['title'] }}</p>
-                                        <span class="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-slate-600 ring-1 ring-slate-200 transition group-hover:ring-blue-200">IO {{ $outcome['number'] }}</span>
-                                    </div>
-                                    <div class="mt-3 flex items-center gap-2 text-xs font-bold text-slate-500">
-                                        <span>{{ $outcome['assigned_count'] }} assigned</span>
-                                        <span class="h-1 w-1 rounded-full bg-slate-300"></span>
-                                        <span>{{ $outcome['pending_count'] }} pending</span>
-                                    </div>
-                                </a>
-                            @endforeach
-                        </div>
-                    </div>
+                <div x-show="outcomesOpen" x-collapse class="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+             @foreach($immediateOutcomes as $outcome)
+                 <a href="{{ route('fiu.effectiveness.folders.show', [
+                    'code' => $outcome->code,
+                    // Nullsafe operator grabs the first Sub-IO so the correct tab opens automatically
+                         'sub_io' => $outcome->subOutcomes->first()?->code 
+                         ]) }}" class="group rounded-2xl border border-slate-200 bg-slate-50 p-4 transition duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:shadow-sm">
+            
+                    <div class="flex items-center justify-between gap-3">
+                       <p class="text-sm font-black text-slate-950 transition group-hover:text-blue-900">{{ $outcome->name }}</p>
+                        <span class="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-slate-600 ring-1 ring-slate-200 transition group-hover:ring-blue-200">{{ $outcome->code }}</span>
+                   </div>
+            
+               <div class="mt-3 flex items-center gap-2 text-xs font-bold text-slate-500">
+                   <span>{{ $outcome->assigned_count ?? 0 }} assigned</span>
+                   <span class="h-1 w-1 rounded-full bg-slate-300"></span>
+                      <span>{{ $outcome->pending_count ?? 0 }} pending</span>
+                 </div>
+             </a>
+         @endforeach
+       </div>
+       </div>
 
                     <div x-data="{ submissionsOpen: true }" class="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
                         <div class="flex flex-col gap-3 border-b border-slate-200 p-5 sm:flex-row sm:items-start sm:justify-between">

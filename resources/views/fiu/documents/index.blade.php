@@ -31,6 +31,17 @@
             </div>
         </div>
 
+
+        <a 
+    href="{{ route('fiu.dashboard') }}" 
+    class="group inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+>
+    <svg class="h-4 w-4 text-slate-400 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+    </svg>
+    Back to Dashboard
+</a>
+
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <a href="{{ route('fiu.documents.index', array_merge(request()->query(), ['status' => 'pending'])) }}" 
                class="relative overflow-hidden rounded-2xl border bg-white p-6 shadow-sm transition hover:shadow-md border-amber-200 {{ request('status') === 'pending' ? 'ring-2 ring-amber-500 ring-offset-2' : '' }}">
@@ -78,12 +89,25 @@
                     </select>
                 @endif
 
-                <div class="flex items-center gap-2">
-                    <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">Search</button>
-                    @if(request()->hasAny(['q', 'institution_id', 'status']))
-                        <a href="{{ route('fiu.documents.index') }}" class="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-200 transition">Clear</a>
-                    @endif
-                </div>
+              <div class="flex items-center gap-2">
+    <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
+        Search
+    </button>
+    
+    @if(request()->hasAny(['q', 'institution_id', 'status']))
+        @php
+            // Count how many of our specific filter keys actually have values in the URL
+            $activeFiltersCount = collect(request()->only(['q', 'institution_id', 'status']))->filter()->count();
+        @endphp
+        
+        <a href="{{ route('fiu.documents.index') }}" class="group flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition">
+            Clear 
+            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-600 transition group-hover:bg-slate-300">
+                {{ $activeFiltersCount }}
+            </span>
+        </a>
+    @endif
+</div>
             </form>
 
             <div class="overflow-x-auto">

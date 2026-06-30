@@ -40,35 +40,44 @@ public function index(Request $request): View
             'returned'    => (clone $baseQuery)->where('status', 'returned')->count(),
         ];
 
-        // 3. Apply Eager Loading & Your Custom Search Logic (If you have a relationship for the effectiveness outcomes, add it to that array too, like 'subIos' or 'outcomes'!)
-          $documents = (clone $baseQuery)->with(['technicalFolders', 'subImmediateOutcomes', 'institutions'])
+      // 3. Apply Eager Loading & Custom Search Logic
+  $documents = (clone $baseQuery)->with(['technicalFolders', 'subImmediateOutcomes', 'institutions'])
+    
+    // Filter by Status (Clicking the top widgets will trigger this)
+    ->when($request->filled('status'), function ($query) use ($request) {
+        $query->where('status', $request->status);
+    })
+    
+    // Dynamic Search Logic
+    ->when($request->filled('q'), function ($query) use ($request) {
+        $search = $request->q;
+        $query->where(function ($subQuery) use ($search) {
             
-            // Filter by Status (Clicking the top widgets will trigger this)
-            ->when($request->filled('status'), function ($query) use ($request) {
-                $query->where('status', $request->status);
-            })
-            
-            // Your Excellent Dynamic Search Logic
-            ->when($request->filled('q'), function ($query) use ($request) {
-                $search = $request->q;
-                $query->where(function ($subQuery) use ($search) {
-                    // Search document title
-                    $subQuery->where('title', 'like', "%{$search}%")
-                        // Search dynamically inside attached institutions
-                        ->orWhereHas('institutions', function ($instQuery) use ($search) {
-                            $instQuery->where('name', 'like', "%{$search}%");
-                        })
-                        // Search dynamically inside attached folder
-                        ->orWhereHas('folder', function ($folderQuery) use ($search) {
-                            $folderQuery->where('name', 'like', "%{$search}%");
-                        });
+            // Search document title
+            $subQuery->where('title', 'like', "%{$search}%")
+                
+                // Search dynamically inside attached institutions
+                ->orWhereHas('institutions', function ($instQuery) use ($search) {
+                    $instQuery->where('name', 'like', "%{$search}%");
+                })
+                
+                // technicalFolders' to match your Pivot Table!
+                ->orWhereHas('technicalFolders', function ($folderQuery) use ($search) {
+                    $folderQuery->where('name', 'like', "%{$search}%");
+                })
+                
+                //  Now it searches inside Effectiveness Sub-IOs as well!
+                ->orWhereHas('subImmediateOutcomes', function ($subIoQuery) use ($search) {
+                    $subIoQuery->where('name', 'like', "%{$search}%")
+                               ->orWhere('code', 'like', "%{$search}%");
                 });
-            })
+        });
+    })
 
             // Admin Dropdown Filter
             ->when($request->filled('institution_id') && $user->role !== 'institution_representative', function ($query) use ($request) {
                 $query->whereHas('institutions', function ($instQuery) use ($request) {
-                    $instQuery->where('id', $request->institution_id);
+                    $instQuery->where('institutions.id', $request->institution_id);
                 });
             })
             
