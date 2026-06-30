@@ -252,25 +252,22 @@ public function storeDocument(Request $request)
             $document->users()->sync($validated['target_users']);
         }
 
-        // 6. REDIRECT
+      // 6. REDIRECT
         if ($validated['workspace_track'] === 'effectiveness') {
             
-            // Optional: Figure out exactly which Parent IOs were just updated
-            // so we can highlight them on the index page!
-            $parentIoIds = \Illuminate\Support\Facades\DB::table('effectiveness_sub_immediate_outcomes')
-                ->whereIn('id', $validated['effectiveness_sub_io_ids'] ?? [])
-                ->pluck('immediate_outcome_id')
-                ->unique()
-                ->toArray();
+            //  UX UPGRADE: Grab the first Sub-IO they selected and its Parent IO
+            $firstSubIo = \App\Models\EffectivenessSubImmediateOutcome::with('immediateOutcome')
+                ->find($validated['effectiveness_sub_io_ids'][0]);
 
+            // Route them straight into the Split Dashboard with the correct tab already open!
             return redirect()
-                ->route('fiu.effectiveness.folders.index')
-                // We pass the parent IDs in the session so the UI knows what to highlight!
-                ->with('success', 'Document successfully mapped to selected Outcomes.')
-                ->with('recently_updated_ios', $parentIoIds); 
-
-
-                } elseif ($validated['workspace_track'] === 'technical') {
+                ->route('fiu.effectiveness.folders.show', [
+                    'code' => $firstSubIo->immediateOutcome->code,
+                    'sub_io' => $firstSubIo->code
+                ])
+                ->with('success', 'Document successfully mapped to selected Outcomes.');
+                
+        } elseif ($validated['workspace_track'] === 'technical') {
             
             // the redirect for Technical Compliance!
             return redirect()
